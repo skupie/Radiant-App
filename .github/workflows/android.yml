@@ -18,21 +18,18 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Build Debug APK
+      - name: Install Gradle 8.2.1
         run: |
-          ROOT="$(dirname "$(find . -type f -name gradlew -print -quit)")"
-          echo "Gradle project root: $ROOT"
-          chmod +x "$ROOT/gradlew"
-          cd "$ROOT"
-          ./gradlew assembleDebug
+          wget -q https://services.gradle.org/distributions/gradle-8.2.1-bin.zip
+          unzip -q gradle-8.2.1-bin.zip
+          echo "$PWD/gradle-8.2.1/bin" >> $GITHUB_PATH
 
-      - name: Find APK
-        run: |
-          echo "Searching for APK..."
-          find . -type f -name "*.apk"
+      - name: Build Debug APK
+        run: gradle :app:assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: debug-apk
           path: app/build/outputs/apk/debug/*.apk
+      
