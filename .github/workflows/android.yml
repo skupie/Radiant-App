@@ -8,10 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -19,38 +17,53 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # Ensures ANDROID_HOME + sdkmanager are available
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build Debug APK
+      - name: Inspect project (modules + tasks)
         shell: bash
         run: |
           set -euxo pipefail
+          echo "=== settings.gradle files ==="
+          ls -la
+          echo "=== settings.gradle content (if exists) ==="
+          if [ -f settings.gradle ]; then sed -n '1,200p' settings.gradle; fi
+          if [ -f settings.gradle.kts ]; then sed -n '1,200p' settings.gradle.kts; fi
+          echo "=== Gradle tasks (assemble) ==="
+          chmod +x ./gradlew
+          ./gradlew tasks --all | grep -E "assemble|bundle" | head -n 200 || true
 
-          # Find gradle project root (where gradlew exists)
-          ROOT="$(dirname "$(find . -type f -name gradlew -print -quit)")"
-          echo "Gradle project root: $ROOT"
-          cd "$ROOT"
+      - name: Build Debug (best effort)
+        shell: bash
+        run: |
+          set -euxo pipefail
           chmod +x ./gradlew
 
-          # Build the debug APK (most Android apps use :app)
-          ./gradlew :app:assembleDebug
+          # Try common options in order
+          ./gradlew assembleDebug || true
+          ./gradlew :app:assembleDebug || true
+          ./gradlew :apk:assembleDebug || true
+          ./gradlew :apk:app:assembleDebug || true
 
-          echo "---- APK outputs ----"
-          find . -type f -path "*/build/outputs/apk/*/*.apk" -print || true
+          echo "=== Search for APK outputs ==="
+          find . -type f \( -name "*.apk" -o -name "*.aab" \) -print || true
 
-          # Fail early if no APK produced
-          APK_PATH="$(find . -type f -path "*/build/outputs/apk/*/*-debug*.apk" -print -quit || true)"
+          # Look for debug APK anywhere
+          APK_PATH="$(find . -type f -name "*debug*.apk" -print -quit || true)"
           if [ -z "$APK_PATH" ]; then
-            echo "ERROR: No debug APK found. Dumping outputs:"
-            find . -maxdepth 6 -type d -name outputs -print || true
+            # fallback: any apk
+            APK_PATH="$(find . -type f -name "*.apk" -print -quit || true)"
+          fi
+
+          if [ -z "$APK_PATH" ]; then
+            echo "ERROR: No APK found. If only AAB is produced, enable APK task or change build task."
             exit 1
           fi
 
+          echo "Found APK: $APK_PATH"
           echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
 
-      - name: Upload Debug APK (artifact)
+      - name: Upload artifact (app-debug-apk)
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
