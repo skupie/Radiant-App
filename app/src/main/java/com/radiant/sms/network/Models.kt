@@ -1,6 +1,5 @@
+// app/src/main/java/com/radiant/sms/network/Models.kt
 package com.radiant.sms.network
-
-typealias AnyJson = Map<String, Any?>
 
 data class MemberLedgerResponse(
     val year: Int,
@@ -17,9 +16,26 @@ data class MemberDueSummaryResponse(
     val summary: DueSummary
 )
 
-// ✅ NOTE:
-// Do NOT define MemberProfileResponse here (you already have it in MemberProfileResponse.kt)
-// Do NOT define MemberShareDetailsResponse here (it exists in its own file)
+data class MemberShareDetailsResponse(
+    val member: MemberDto? = null,
+    val share: ShareInfo? = null,
+    val nominee: NomineeInfo? = null
+)
+
+data class ShareInfo(
+    val share_no: String? = null,
+    val share_amount: String? = null,
+    val total_deposit: String? = null,
+    val created_at: String? = null
+)
+
+data class NomineeInfo(
+    val name: String? = null,
+    val phone: String? = null,
+    val relation: String? = null,
+    val nid: String? = null,
+    val address: String? = null
+)
 
 data class LedgerMonth(
     val month: Int,
