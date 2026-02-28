@@ -1,4 +1,4 @@
-package com.radiant.sms.network.models
+package com.radiant.sms.network
 
 data class MemberProfileResponse(val member: Member)
 
