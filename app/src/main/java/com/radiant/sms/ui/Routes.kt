@@ -5,4 +5,10 @@ object Routes {
     const val LOGIN = "login"
     const val MEMBER_HOME = "member_home"
     const val ADMIN_HOME = "admin_home"
+
+    // ✅ New member feature routes
+    const val MEMBER_PROFILE = "member_profile"
+    const val MEMBER_LEDGER = "member_ledger"
+    const val MEMBER_DUE_SUMMARY = "member_due_summary"
+    const val MEMBER_SHARE_DETAILS = "member_share_details"
 }
