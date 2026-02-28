@@ -10,7 +10,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.radiant.sms.data.TokenStore
 import com.radiant.sms.network.NetworkModule
-import com.radiant.sms.network.models.MemberProfileResponse
+import com.radiant.sms.network.MemberProfileResponse
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
