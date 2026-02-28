@@ -6,20 +6,32 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.radiant.sms.network.ApiClient
-import com.radiant.sms.network.LoginRequest
 import com.radiant.sms.ui.Routes
-import kotlinx.coroutines.launch
+import com.radiant.sms.ui.viewmodel.AuthViewModel
 
 @Composable
-fun LoginScreen(nav: NavController) {
+fun LoginScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var loading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
 
-    val scope = rememberCoroutineScope()
+    val s by vm.state.collectAsState()
+
+    // Navigate away once login succeeds (token persisted)
+    LaunchedEffect(s.isLoading, s.tokenPresent, s.role) {
+        if (!s.isLoading && s.tokenPresent) {
+            val destination = when (s.role?.lowercase()) {
+                "admin" -> Routes.ADMIN_HOME
+                else -> Routes.MEMBER_SHARE_DETAILS
+            }
+
+            nav.navigate(destination) {
+                popUpTo(Routes.LOGIN) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -46,9 +58,9 @@ fun LoginScreen(nav: NavController) {
             visualTransformation = PasswordVisualTransformation()
         )
 
-        if (error != null) {
+        if (!s.error.isNullOrBlank()) {
             Text(
-                text = error!!,
+                text = s.error!!,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodyMedium
             )
@@ -56,36 +68,13 @@ fun LoginScreen(nav: NavController) {
 
         Button(
             onClick = {
-                error = null
-                loading = true
-
-                scope.launch {
-                    try {
-                        // ✅ login (backend uses email)
-                        ApiClient.api.login(
-                            LoginRequest(
-                                email = email.trim(),
-                                password = password,
-                                device_name = "android"
-                            )
-                        )
-
-                        // ✅ Go directly to Share Details after login
-                        nav.navigate(Routes.MEMBER_SHARE_DETAILS) {
-                            popUpTo(Routes.LOGIN) { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    } catch (e: Exception) {
-                        error = e.message ?: "Login failed"
-                    } finally {
-                        loading = false
-                    }
-                }
+                // ✅ Use AuthViewModel so token is saved to TokenStore.
+                vm.login(email.trim(), password)
             },
-            enabled = !loading,
+            enabled = !s.isLoading,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (loading) "Logging in..." else "Login")
+            Text(if (s.isLoading) "Logging in..." else "Login")
         }
     }
 }
