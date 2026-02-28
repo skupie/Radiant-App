@@ -10,99 +10,91 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.radiant.sms.data.TokenStore
-import com.radiant.sms.network.MemberShareDetailsResponse
+import com.radiant.sms.network.ApiService
 import com.radiant.sms.network.NetworkModule
-import kotlinx.coroutines.flow.first
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+import com.radiant.sms.network.models.MemberShareDetailsResponse
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MemberShareDetailsScreen(nav: NavController) {
-    val tokenStore = remember { TokenStore(nav.context) }
+fun MemberShareDetailsScreen(
+    nav: NavController,
+    api: ApiService = NetworkModule.api
+) {
+    val scope = rememberCoroutineScope()
 
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var data by remember { mutableStateOf<MemberShareDetailsResponse?>(null) }
 
-    LaunchedEffect(Unit) {
-        loading = true
-        error = null
-        try {
-            val token = tokenStore.tokenFlow.first()
-            val api = NetworkModule.createApiService { token }
-            data = api.getMemberShareDetails()
-        } catch (e: Exception) {
-            error = e.message
-        } finally {
-            loading = false
-        }
-    }
-
-    Scaffold(
-        topBar = { TopAppBar(title = { Text("Share Details") }) }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-        ) {
-            when {
-                loading -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
-                error != null -> {
-                    Text(
-                        text = "Error: $error",
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-                data != null -> {
-                    ShareDetailsContent(res = data!!)
-                }
+    fun load() {
+        scope.launch {
+            loading = true
+            error = null
+            try {
+                data = api.getMemberShareDetails()
+            } catch (e: Exception) {
+                error = e.message ?: "Failed to load share details"
+            } finally {
+                loading = false
             }
         }
     }
-}
 
-@Composable
-private fun ShareDetailsContent(res: MemberShareDetailsResponse) {
-    val m = res.member
+    LaunchedEffect(Unit) { load() }
 
-    val fullName = m.full_name ?: "-"
-    val nid = m.nid ?: "-"
-    val email = m.email ?: "-"
-
-    // ✅ FIX: mobile number - try multiple possible fields
-    val phone = m.phoneOrMobile() ?: "-"
-
-    val shareCount = m.share ?: 0
-
-    // ✅ FIX: created date - try multiple possible fields
-    val profileCreated = formatPrettyDate(m.createdAtAny())
-
-    val totalDeposited = res.total_deposited ?: 0.0
-    val totalDue = res.total_due ?: 0.0
-
-    val nomineeName = m.nominee_name ?: "-"
-    val nomineeNid = m.nominee_nid ?: "-"
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ScreenScaffold(
+        title = "Share Details",
+        nav = nav
     ) {
+        // Top actions row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            OutlinedButton(onClick = { load() }, enabled = !loading) {
+                Text(if (loading) "Loading..." else "Refresh")
+            }
+        }
+
+        if (loading) {
+            Spacer(Modifier.height(16.dp))
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            return@ScreenScaffold
+        }
+
+        if (error != null) {
+            Spacer(Modifier.height(12.dp))
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Error",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = error!!,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+            return@ScreenScaffold
+        }
+
+        val member = data?.member
+        val share = data?.share
+        val nominee = data?.nominee
+
+        // --- Profile / Header Card ---
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp)
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -110,191 +102,124 @@ private fun ShareDetailsContent(res: MemberShareDetailsResponse) {
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Avatar(initials = initialsFromName(fullName))
+                // Avatar placeholder
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = (member?.name?.trim()?.take(1) ?: "M").uppercase(),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
 
                 Spacer(Modifier.width(12.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
+                Column(Modifier.weight(1f)) {
                     Text(
-                        text = fullName,
+                        text = member?.name ?: "Member",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        fontWeight = FontWeight.SemiBold
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = "Member NID: $nid",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = member?.email ?: "-",
+                        style = MaterialTheme.typography.bodyMedium
                     )
-                }
-
-                Spacer(Modifier.width(12.dp))
-
-                Card(
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "Phone: ${member?.phone ?: "-"}",
+                        style = MaterialTheme.typography.bodyMedium
                     )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalAlignment = Alignment.Start
-                    ) {
-                        Text(
-                            text = "Total Shares: $shareCount",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                    if (!member?.member_id.isNullOrBlank()) {
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            text = "Each monthly deposit is based on this share count.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = "Member ID: ${member?.member_id}",
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
             }
-
-            Divider()
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(18.dp)
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    SectionTitle("CONTACT DETAILS")
-                    KeyValueRow("Email", email)
-                    KeyValueRow("Mobile Number", phone)
-                }
-
-                Column(modifier = Modifier.weight(1f)) {
-                    SectionTitle("ACCOUNT SUMMARY")
-                    KeyValueRow("Share Count", shareCount.toString())
-                    KeyValueRow("Profile Created", profileCreated)
-                    KeyValueRow("Total Deposited", formatMoney(totalDeposited))
-                    KeyValueRow("Total Due Amount", formatMoney(totalDue))
-                }
-            }
         }
 
+        Spacer(Modifier.height(14.dp))
+
+        // --- Share Summary Card ---
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp)
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(Modifier.padding(16.dp)) {
                 Text(
-                    text = "Nominee Details",
+                    text = "Share Summary",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(10.dp))
+
+                InfoRow(label = "Share No", value = share?.share_no ?: "-")
+                Divider(Modifier.padding(vertical = 8.dp))
+                InfoRow(label = "Share Amount", value = share?.share_amount ?: "-")
+                Divider(Modifier.padding(vertical = 8.dp))
+                InfoRow(label = "Total Deposit", value = share?.total_deposit ?: "-")
+                Divider(Modifier.padding(vertical = 8.dp))
+                InfoRow(label = "Created At", value = share?.created_at ?: "-")
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        // --- Nominee Card ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(Modifier.padding(16.dp)) {
                 Text(
-                    text = "The nominated beneficiary information linked to your shares.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "Nominee Information",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
                 )
+                Spacer(Modifier.height(10.dp))
 
-                Spacer(Modifier.height(14.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Avatar(initials = initialsFromName(nomineeName))
-
-                    Spacer(Modifier.width(12.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = nomineeName,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            text = "Nominee NID: $nomineeNid",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Spacer(Modifier.width(12.dp))
-
-                    Text(
-                        text = "Nominee information is read-only. Please contact the administrator for updates.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.widthIn(max = 240.dp)
-                    )
+                InfoRow(label = "Name", value = nominee?.name ?: "-")
+                Divider(Modifier.padding(vertical = 8.dp))
+                InfoRow(label = "Phone", value = nominee?.phone ?: "-")
+                Divider(Modifier.padding(vertical = 8.dp))
+                InfoRow(label = "Relation", value = nominee?.relation ?: "-")
+                Divider(Modifier.padding(vertical = 8.dp))
+                InfoRow(label = "NID", value = nominee?.nid ?: "-")
+                if (!nominee?.address.isNullOrBlank()) {
+                    Divider(Modifier.padding(vertical = 8.dp))
+                    InfoRow(label = "Address", value = nominee?.address ?: "-")
                 }
             }
         }
-    }
-}
 
-/**
- * ✅ These helpers avoid compile errors if your model uses different names.
- * Add / remove guesses if needed based on your real Member model fields.
- */
-private fun Any?.getStringField(vararg names: String): String? {
-    if (this == null) return null
-    return try {
-        val kClass = this::class
-        for (n in names) {
-            val prop = kClass.members.firstOrNull { it.name == n } ?: continue
-            val v = prop.call(this) as? String
-            if (!v.isNullOrBlank()) return v
+        Spacer(Modifier.height(18.dp))
+
+        // Optional action button (you can remove)
+        Button(
+            onClick = { /* TODO: navigate to edit/ledger/etc */ },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("OK")
         }
-        null
-    } catch (_: Exception) {
-        null
     }
-}
-
-private fun Any?.getIntField(vararg names: String): Int? {
-    if (this == null) return null
-    return try {
-        val kClass = this::class
-        for (n in names) {
-            val prop = kClass.members.firstOrNull { it.name == n } ?: continue
-            val v = prop.call(this)
-            when (v) {
-                is Int -> return v
-                is Long -> return v.toInt()
-            }
-        }
-        null
-    } catch (_: Exception) {
-        null
-    }
-}
-
-// Your member model type is `m` (res.member). We call reflection to fetch possible fields.
-private fun Any.phoneOrMobile(): String? =
-    getStringField("phone", "mobile", "mobile_number", "phone_number", "mobileNumber")
-
-private fun Any.createdAtAny(): String? =
-    getStringField("created_at", "createdAt", "profile_created", "profileCreated", "created", "created_date")
-
-@Composable
-private fun SectionTitle(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontWeight = FontWeight.SemiBold
-    )
-    Spacer(Modifier.height(10.dp))
 }
 
 @Composable
-private fun KeyValueRow(label: String, value: String) {
+private fun InfoRow(
+    label: String,
+    value: String
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
@@ -304,52 +229,11 @@ private fun KeyValueRow(label: String, value: String) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(16.dp))
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            fontWeight = FontWeight.Medium
         )
-    }
-    Spacer(Modifier.height(10.dp))
-}
-
-@Composable
-private fun Avatar(initials: String) {
-    Box(
-        modifier = Modifier
-            .size(54.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.secondaryContainer),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = initials,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-    }
-}
-
-private fun initialsFromName(name: String): String {
-    val parts = name.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
-    if (parts.isEmpty()) return "?"
-    val first = parts.getOrNull(0)?.firstOrNull()?.uppercaseChar() ?: '?'
-    val second = parts.getOrNull(1)?.firstOrNull()?.uppercaseChar()
-    return if (second != null) "$first$second" else "$first"
-}
-
-private fun formatMoney(v: Double): String = "%,.2f".format(v)
-
-private fun formatPrettyDate(raw: String?): String {
-    if (raw.isNullOrBlank()) return "-"
-    return try {
-        val datePart = raw.take(10)
-        val dt = LocalDate.parse(datePart)
-        dt.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))
-    } catch (_: Exception) {
-        raw
     }
 }
