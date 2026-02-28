@@ -1,13 +1,20 @@
 package com.radiant.sms.ui.screens.member
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.radiant.sms.data.Repository
+import com.radiant.sms.data.TokenStore
 import com.radiant.sms.network.MemberShareDetailsResponse
 import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
@@ -22,6 +29,9 @@ fun MemberShareDetailsScreen(nav: NavController) {
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var data by remember { mutableStateOf<MemberShareDetailsResponse?>(null) }
+
+    // Needed if your image URLs require auth headers
+    val tokenStore = remember { TokenStore(context) }
 
     fun load() {
         scope.launch {
@@ -66,23 +76,31 @@ fun MemberShareDetailsScreen(nav: NavController) {
 
         Spacer(Modifier.height(12.dp))
 
-        InfoCard(title = "Member Information") {
-            InfoRow("Name", member?.name)
+        InfoCardWithPhoto(
+            title = "Member Information",
+            photoUrl = member?.displayPhotoUrl,
+            tokenStore = tokenStore
+        ) {
+            InfoRow("Name", member?.displayName)
             InfoRow("Email", member?.email)
-            InfoRow("Phone", member?.phone)
-            InfoRow("Member ID", member?.member_id)
+            InfoRow("Phone", member?.displayPhone)
+            InfoRow("Member ID", member?.displayMemberId)
         }
 
         InfoCard(title = "Share Information") {
-            InfoRow("Share No", share?.share_no)
-            InfoRow("Share Amount", share?.share_amount)
-            InfoRow("Total Deposit", share?.total_deposit)
-            InfoRow("Created At", share?.created_at)
+            InfoRow("Share No", share?.displayShareNo)
+            InfoRow("Share Amount", share?.displayShareAmount)
+            InfoRow("Total Deposit", share?.displayTotalDeposit)
+            InfoRow("Created At", share?.displayCreatedAt)
         }
 
-        InfoCard(title = "Nominee Information") {
+        InfoCardWithPhoto(
+            title = "Nominee Information",
+            photoUrl = nominee?.displayPhotoUrl,
+            tokenStore = tokenStore
+        ) {
             InfoRow("Name", nominee?.name)
-            InfoRow("Phone", nominee?.phone)
+            InfoRow("Phone", nominee?.displayPhone)
             InfoRow("Relation", nominee?.relation)
             InfoRow("NID", nominee?.nid)
             InfoRow("Address", nominee?.address)
@@ -109,6 +127,92 @@ private fun InfoCard(
         }
     }
     Spacer(Modifier.height(12.dp))
+}
+
+@Composable
+private fun InfoCardWithPhoto(
+    title: String,
+    photoUrl: String?,
+    tokenStore: TokenStore,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val context = LocalContext.current
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Photo on the right side (circle)
+                MemberCirclePhoto(
+                    photoUrl = photoUrl,
+                    tokenStore = tokenStore
+                )
+            }
+
+            Divider()
+            content()
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+}
+
+@Composable
+private fun MemberCirclePhoto(
+    photoUrl: String?,
+    tokenStore: TokenStore
+) {
+    val context = LocalContext.current
+
+    // If your photo endpoint is protected, send auth header in the image request
+    val token = remember { tokenStore.getToken() }
+
+    val model = remember(photoUrl, token) {
+        if (photoUrl.isNullOrBlank()) null
+        else {
+            ImageRequest.Builder(context)
+                .data(photoUrl)
+                .apply {
+                    if (!token.isNullOrBlank()) {
+                        addHeader("Authorization", "Bearer $token")
+                    }
+                }
+                .crossfade(true)
+                .build()
+        }
+    }
+
+    // Placeholder circle if no image
+    if (model == null) {
+        Surface(
+            modifier = Modifier
+                .size(46.dp)
+                .clip(CircleShape),
+            color = MaterialTheme.colorScheme.surfaceVariant
+        ) {}
+        return
+    }
+
+    AsyncImage(
+        model = model,
+        contentDescription = "photo",
+        modifier = Modifier
+            .size(46.dp)
+            .clip(CircleShape)
+    )
 }
 
 @Composable
