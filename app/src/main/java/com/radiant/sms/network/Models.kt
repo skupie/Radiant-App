@@ -1,41 +1,69 @@
-package com.radiant.sms.network
+package com.radiant.sms.network.models
 
-import com.squareup.moshi.JsonClass
+data class MemberProfileResponse(val member: Member)
 
-@JsonClass(generateAdapter = true)
-data class LoginRequest(
-    val email: String,
-    val password: String,
-    val device_name: String? = "android"
+data class MemberLedgerResponse(
+    val year: Int,
+    val available_years: List<Int> = emptyList(),
+    val monthly_data: List<LedgerMonth> = emptyList(),
+    val year_total: Double = 0.0,
+    val lifetime_total: Double = 0.0,
+    val due_summary: DueSummary? = null
 )
 
-@JsonClass(generateAdapter = true)
-data class LoginResponse(
-    val token: String,
-    val token_type: String,
-    val user: UserDto
+data class MemberDueSummaryResponse(
+    val selected_year: Int? = null,
+    val available_years: List<Int> = emptyList(),
+    val summary: DueSummary
 )
 
-@JsonClass(generateAdapter = true)
-data class UserDto(
+data class MemberShareDetailsResponse(
+    val member: Member,
+    val total_deposited: Double = 0.0,
+    val total_due: Double = 0.0
+)
+
+data class Member(
     val id: Int,
-    val name: String,
-    val email: String,
-    val role: String
+    val user_id: Int? = null,
+    val full_name: String? = null,
+    val nid: String? = null,
+    val email: String? = null,
+    val mobile_number: String? = null,
+    val nominee_name: String? = null,
+    val nominee_nid: String? = null,
+    val share: Int? = null,
+    val image_url: String? = null,
+    val nominee_photo_url: String? = null,
+    val total_deposited: Double? = null,
+    val due_total: Double? = null,
+    val due_months_count: Int? = null
 )
 
-@JsonClass(generateAdapter = true)
-data class MessageResponse(
-    val message: String? = null,
-    val success: Boolean? = null
+data class LedgerMonth(
+    val month: Int,
+    val label: String? = null,
+    val total: Double = 0.0,
+    val entries: List<LedgerEntry> = emptyList()
 )
 
-// Minimal "me" response wrapper - adjust if your API returns different fields
-@JsonClass(generateAdapter = true)
-data class MeResponse(
-    val user: UserDto? = null
+data class LedgerEntry(
+    val id: Int,
+    val base_amount: Double = 0.0,
+    val total_amount: Double = 0.0,
+    val type: String? = null,
+    val deposited_at_local: String? = null,
+    val notes: String? = null
 )
 
-// For demo screens - keep as raw maps so the app compiles even if you change schema
-@JsonClass(generateAdapter = true)
-data class AnyJson(val data: Map<String, Any?> = emptyMap())
+data class DueSummary(
+    val total: Double = 0.0,
+    val months: List<DueMonth> = emptyList()
+)
+
+data class DueMonth(
+    val year: Int,
+    val month: Int,
+    val base_amount: Double = 0.0,
+    val amount: Double = 0.0
+)
