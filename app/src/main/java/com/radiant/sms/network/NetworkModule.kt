@@ -1,6 +1,7 @@
 package com.radiant.sms.network
 
 import android.content.Context
+import android.util.Log
 import com.radiant.sms.AppConfig
 import com.radiant.sms.data.TokenStore
 import com.squareup.moshi.Moshi
@@ -12,22 +13,17 @@ import java.util.concurrent.TimeUnit
 
 object NetworkModule {
 
-    /**
-     * Main entry point used by Composables:
-     * val api = remember { NetworkModule.api(ctx) }
-     */
     fun api(ctx: Context): ApiService {
         val tokenStore = TokenStore(ctx.applicationContext)
         return createApiService { tokenStore.getTokenSync() }
     }
 
-    /**
-     * Used by AuthViewModel where token comes from memory.
-     */
     fun createApiService(tokenProvider: () -> String?): ApiService {
 
-        // ✅ Logging (shows full request + response in Logcat)
-        val logging = HttpLoggingInterceptor().apply {
+        // ✅ Prints request/response INCLUDING full URL
+        val logging = HttpLoggingInterceptor { msg ->
+            Log.d("API_HTTP", msg)
+        }.apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
@@ -53,7 +49,7 @@ object NetworkModule {
         val moshi = Moshi.Builder().build()
 
         return Retrofit.Builder()
-            .baseUrl(AppConfig.BASE_URL) // ✅ SINGLE SOURCE OF TRUTH
+            .baseUrl(AppConfig.BASE_URL)   // must end with /
             .client(client)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
