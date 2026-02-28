@@ -29,7 +29,10 @@ interface ApiService {
     suspend fun getMemberDueSummary(@Query("year") year: Int? = null): MemberDueSummaryResponse
 
     @GET("api/member/share-details")
-    suspend fun getMemberShareDetails(): MemberShareDetailsResponse
+    suspend fun getMemberShareDetails(): retrofit2.Response<MemberShareDetailsResponse>
+    
+   // @GET("api/member/share-details")
+    //suspend fun getMemberShareDetails(): MemberShareDetailsResponse
 
 
     // ---------- ADMIN ----------
