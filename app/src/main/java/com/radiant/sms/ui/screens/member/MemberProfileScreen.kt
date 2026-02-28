@@ -4,18 +4,24 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.radiant.sms.network.ApiClient
+import com.radiant.sms.data.Repository
+import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
 
 @Composable
 fun MemberProfileScreen(nav: NavController) {
+    val context = LocalContext.current
+
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-
-    // Keep it generic so it compiles even if response shape changes
     var raw by remember { mutableStateOf("No data") }
+
+    // ✅ Use the authenticated API service
+    val api = remember { NetworkModule.api(context) }
+    val repo = remember { Repository(api) }
 
     val scope = rememberCoroutineScope()
 
@@ -24,7 +30,7 @@ fun MemberProfileScreen(nav: NavController) {
             try {
                 loading = true
                 error = null
-                val res = ApiClient.api.getMemberProfile()
+                val res = repo.memberProfile()
                 raw = res.toString()
             } catch (e: Exception) {
                 error = e.message ?: "Failed to load profile"
