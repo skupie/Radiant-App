@@ -16,26 +16,6 @@ data class MemberDueSummaryResponse(
     val summary: DueSummary
 )
 
-data class MemberShareDetailsResponse(
-    val member: MemberDto? = null,
-    val share: ShareInfo? = null,
-    val nominee: NomineeInfo? = null
-)
-
-data class ShareInfo(
-    val share_no: String? = null,
-    val share_amount: String? = null,
-    val total_deposit: String? = null,
-    val created_at: String? = null
-)
-
-data class NomineeInfo(
-    val name: String? = null,
-    val phone: String? = null,
-    val relation: String? = null,
-    val nid: String? = null,
-    val address: String? = null
-)
 
 data class LedgerMonth(
     val month: Int,
