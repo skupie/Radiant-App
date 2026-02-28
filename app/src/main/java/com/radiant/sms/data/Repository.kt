@@ -36,8 +36,22 @@ class Repository(private val api: ApiService) {
 
     suspend fun memberDueSummary(year: Int?): MemberDueSummaryResponse = api.getMemberDueSummary(year)
 
-    suspend fun memberShareDetails(): MemberShareDetailsResponse = api.getMemberShareDetails()
+   // suspend fun memberShareDetails(): MemberShareDetailsResponse = api.getMemberShareDetails()
+suspend fun memberShareDetails(): MemberShareDetailsResponse {
+    val response = api.getMemberShareDetails()
 
+    if (response.isSuccessful) {
+        val body = response.body()
+        if (body != null) {
+            return body
+        } else {
+            throw Exception("Server returned empty body")
+        }
+    } else {
+        val errorText = response.errorBody()?.string()
+        throw Exception("HTTP ${response.code()} - $errorText")
+    }
+}
     // ---------- ADMIN ----------
     suspend fun adminMembers(search: String?, perPage: Int?): AnyJson =
         api.adminMembers(search, perPage)
