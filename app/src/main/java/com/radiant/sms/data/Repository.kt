@@ -1,52 +1,35 @@
-// app/src/main/java/com/radiant/sms/network/ApiService.kt
-package com.radiant.sms.network
+// app/src/main/java/com/radiant/sms/data/Repository.kt
+package com.radiant.sms.data
 
+import com.radiant.sms.network.ApiService
 import com.radiant.sms.network.models.*
-import retrofit2.http.*
 
-interface ApiService {
+class Repository(private val api: ApiService) {
 
-    // ---------- AUTH ----------
-    @POST("api/login")
-    suspend fun login(@Body body: LoginRequest): LoginResponse
+    // AUTH
+    suspend fun login(email: String, password: String): LoginResponse {
+        return api.login(LoginRequest(email = email, password = password, device_name = "android"))
+    }
 
-    @GET("api/me")
-    suspend fun me(): MeResponse
+    suspend fun me(): MeResponse = api.me()
 
-    @POST("api/logout")
-    suspend fun logout(): MessageResponse
+    suspend fun logout(): MessageResponse = api.logout()
 
 
-    // ---------- MEMBER ----------
-    @GET("api/member/profile")
-    suspend fun getMemberProfile(): MemberProfileResponse
+    // MEMBER
+    suspend fun memberProfile(): MemberProfileResponse = api.getMemberProfile()
 
-    @GET("api/member/ledger")
-    suspend fun getMemberLedger(@Query("year") year: Int? = null): MemberLedgerResponse
+    suspend fun memberLedger(year: Int?): MemberLedgerResponse = api.getMemberLedger(year)
 
-    @GET("api/member/due-summary")
-    suspend fun getMemberDueSummary(@Query("year") year: Int? = null): MemberDueSummaryResponse
+    suspend fun memberDueSummary(year: Int?): MemberDueSummaryResponse = api.getMemberDueSummary(year)
 
-    @GET("api/member/share-details")
-    suspend fun getMemberShareDetails(): MemberShareDetailsResponse
+    suspend fun memberShareDetails(): MemberShareDetailsResponse = api.getMemberShareDetails()
 
 
-    // ---------- ADMIN (optional / safe placeholders) ----------
-    @GET("api/admin/members")
-    suspend fun adminMembers(
-        @Query("search") search: String? = null,
-        @Query("perPage") perPage: Int? = null
-    ): AnyJson
+    // ADMIN
+    suspend fun adminMembers(search: String?, perPage: Int?): AnyJson = api.adminMembers(search, perPage)
 
-    @GET("api/admin/deposits")
-    suspend fun adminDeposits(
-        @Query("search") search: String? = null,
-        @Query("perPage") perPage: Int? = null
-    ): AnyJson
+    suspend fun adminDeposits(search: String?, perPage: Int?): AnyJson = api.adminDeposits(search, perPage)
 
-    @GET("api/admin/due-summary")
-    suspend fun adminDueSummary(
-        @Query("search") search: String? = null,
-        @Query("perPage") perPage: Int? = null
-    ): AnyJson
+    suspend fun adminDueSummary(search: String?, perPage: Int?): AnyJson = api.adminDueSummary(search, perPage)
 }
