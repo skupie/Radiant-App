@@ -1,6 +1,5 @@
 package com.radiant.sms.ui.screens.member
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
@@ -30,7 +29,6 @@ fun MemberShareDetailsScreen(nav: NavController) {
     var error by remember { mutableStateOf<String?>(null) }
     var data by remember { mutableStateOf<MemberShareDetailsResponse?>(null) }
 
-    // Needed if your image URLs require auth headers
     val tokenStore = remember { TokenStore(context) }
 
     fun load() {
@@ -47,9 +45,7 @@ fun MemberShareDetailsScreen(nav: NavController) {
         }
     }
 
-    LaunchedEffect(Unit) {
-        load()
-    }
+    LaunchedEffect(Unit) { load() }
 
     ScreenScaffold(title = "Share Details", nav = nav) {
 
@@ -136,8 +132,6 @@ private fun InfoCardWithPhoto(
     tokenStore: TokenStore,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val context = LocalContext.current
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -156,7 +150,6 @@ private fun InfoCardWithPhoto(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Photo on the right side (circle)
                 MemberCirclePhoto(
                     photoUrl = photoUrl,
                     tokenStore = tokenStore
@@ -177,15 +170,17 @@ private fun MemberCirclePhoto(
 ) {
     val context = LocalContext.current
 
-    // If your photo endpoint is protected, send auth header in the image request
-    val token = remember { tokenStore.getToken() }
+    // ✅ Correct TokenStore API
+    val token = remember { tokenStore.getTokenSync() }
 
-    val model = remember(photoUrl, token) {
+    // ✅ Explicit type prevents type inference issues
+    val model: ImageRequest? = remember(photoUrl, token) {
         if (photoUrl.isNullOrBlank()) null
         else {
             ImageRequest.Builder(context)
                 .data(photoUrl)
                 .apply {
+                    // If your photo endpoint is protected, send auth header
                     if (!token.isNullOrBlank()) {
                         addHeader("Authorization", "Bearer $token")
                     }
@@ -195,7 +190,6 @@ private fun MemberCirclePhoto(
         }
     }
 
-    // Placeholder circle if no image
     if (model == null) {
         Surface(
             modifier = Modifier
