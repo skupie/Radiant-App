@@ -1,36 +1,48 @@
 package com.radiant.sms.network
 
-import android.content.Context
-import com.radiant.sms.storage.TokenStore
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import com.squareup.moshi.Moshi
+import retrofit2.converter.moshi.MoshiConverterFactory
+import java.util.concurrent.TimeUnit
 
 object NetworkModule {
 
-    // ✅ Change this to your domain
+    /**
+     * ✅ Set your production base URL here.
+     * Keep trailing slash.
+     */
     private const val BASE_URL = "https://basic.bd-d.online/"
 
-    fun api(context: Context): ApiService {
-        val tokenStore = TokenStore(context.applicationContext)
-
+    /**
+     * Create ApiService with optional Bearer token provider.
+     * AuthViewModel already calls:
+     *   NetworkModule.createApiService { cachedToken }
+     */
+    fun createApiService(tokenProvider: () -> String?): ApiService {
         val client = OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .writeTimeout(45, TimeUnit.SECONDS)
             .addInterceptor { chain ->
-                val token = tokenStore.getToken()
-                val req = chain.request().newBuilder()
+                val token = tokenProvider()?.trim()
+                val reqBuilder = chain.request().newBuilder()
                     .header("Accept", "application/json")
 
                 if (!token.isNullOrBlank()) {
-                    req.header("Authorization", "Bearer $token")
+                    reqBuilder.header("Authorization", "Bearer $token")
                 }
-                chain.proceed(req.build())
+
+                chain.proceed(reqBuilder.build())
             }
             .build()
+
+        val moshi = Moshi.Builder().build()
 
         return Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(ApiService::class.java)
     }
