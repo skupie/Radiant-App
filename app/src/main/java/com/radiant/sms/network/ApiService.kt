@@ -8,13 +8,13 @@ import retrofit2.http.Query
 interface ApiService {
 
     // ---------- AUTH ----------
-    @POST("api/login")
+    @POST("api/auth/login")
     suspend fun login(@Body body: LoginRequest): LoginResponse
 
-    @GET("api/me")
+    @GET("api/auth/me")
     suspend fun me(): MeResponse
 
-    @POST("api/logout")
+    @POST("api/auth/logout")
     suspend fun logout(): MessageResponse
 
 
