@@ -1,8 +1,6 @@
 package com.radiant.sms.network
 
-import android.content.Context
-import com.radiant.sms.AppConfig
-import com.radiant.sms.data.TokenStore
+import android.util.Log
 import com.squareup.moshi.Moshi
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -12,14 +10,19 @@ import java.util.concurrent.TimeUnit
 
 object NetworkModule {
 
-    fun api(ctx: Context): ApiService {
-        val tokenStore = TokenStore(ctx.applicationContext)
-        return createApiService { tokenStore.getTokenSync() }
-    }
+    /**
+     * IMPORTANT:
+     * - Base URL MUST end with a slash.
+     * - If your endpoints already contain "api/..." then keep BASE_URL without "api/".
+     */
+    private const val BASE_URL = "https://basic.bd-d.online/"
 
     fun createApiService(tokenProvider: () -> String?): ApiService {
 
-        val logging = HttpLoggingInterceptor().apply {
+        // OkHttp built-in logger (prints request/response)
+        val httpLogger = HttpLoggingInterceptor { msg ->
+            Log.d("API_HTTP", msg)
+        }.apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
@@ -27,7 +30,11 @@ object NetworkModule {
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(45, TimeUnit.SECONDS)
             .writeTimeout(45, TimeUnit.SECONDS)
-            .addInterceptor(logging) // ✅ logs full request/response
+
+            // 1) BODY logging
+            .addInterceptor(httpLogger)
+
+            // 2) Our interceptor: adds headers + prints URL + status code
             .addInterceptor { chain ->
                 val token = tokenProvider()?.trim()
 
@@ -38,14 +45,20 @@ object NetworkModule {
                     reqBuilder.header("Authorization", "Bearer $token")
                 }
 
-                chain.proceed(reqBuilder.build())
+                val request = reqBuilder.build()
+                Log.d("API_HTTP", "➡️ ${request.method} ${request.url}")
+
+                val response = chain.proceed(request)
+                Log.d("API_HTTP", "⬅️ ${response.code} ${request.url}")
+
+                response
             }
             .build()
 
         val moshi = Moshi.Builder().build()
 
         return Retrofit.Builder()
-            .baseUrl(AppConfig.BASE_URL) // ✅ uses AppConfig
+            .baseUrl(BASE_URL)
             .client(client)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
