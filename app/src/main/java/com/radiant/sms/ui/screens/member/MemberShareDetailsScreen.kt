@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MemberShareDetailsScreen(nav: NavController) {
     val tokenStore = remember { TokenStore(nav.context) }
@@ -42,24 +43,30 @@ fun MemberShareDetailsScreen(nav: NavController) {
         }
     }
 
-    ScreenScaffold(title = "Share Details", nav = nav) {
-        when {
-            loading -> {
-                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+    Scaffold(
+        topBar = { TopAppBar(title = { Text("Share Details") }) }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+            when {
+                loading -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
                 }
-            }
-
-            error != null -> {
-                Text(
-                    text = "Error: $error",
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-
-            data != null -> {
-                ShareDetailsContent(res = data!!)
+                error != null -> {
+                    Text(
+                        text = "Error: $error",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+                data != null -> {
+                    ShareDetailsContent(res = data!!)
+                }
             }
         }
     }
@@ -72,10 +79,15 @@ private fun ShareDetailsContent(res: MemberShareDetailsResponse) {
     val fullName = m.full_name ?: "-"
     val nid = m.nid ?: "-"
     val email = m.email ?: "-"
-    val phone = m.phone ?: "-"
+
+    // ✅ FIX: mobile number - try multiple possible fields
+    val phone = m.phoneOrMobile() ?: "-"
+
     val shareCount = m.share ?: 0
 
-    val profileCreated = formatPrettyDate(m.created_at)
+    // ✅ FIX: created date - try multiple possible fields
+    val profileCreated = formatPrettyDate(m.createdAtAny())
+
     val totalDeposited = res.total_deposited ?: 0.0
     val totalDue = res.total_due ?: 0.0
 
@@ -88,7 +100,6 @@ private fun ShareDetailsContent(res: MemberShareDetailsResponse) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Top card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp)
@@ -148,7 +159,6 @@ private fun ShareDetailsContent(res: MemberShareDetailsResponse) {
 
             Divider()
 
-            // Contact + Account summary (2 columns)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -171,7 +181,6 @@ private fun ShareDetailsContent(res: MemberShareDetailsResponse) {
             }
         }
 
-        // Nominee card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp)
@@ -228,6 +237,50 @@ private fun ShareDetailsContent(res: MemberShareDetailsResponse) {
         }
     }
 }
+
+/**
+ * ✅ These helpers avoid compile errors if your model uses different names.
+ * Add / remove guesses if needed based on your real Member model fields.
+ */
+private fun Any?.getStringField(vararg names: String): String? {
+    if (this == null) return null
+    return try {
+        val kClass = this::class
+        for (n in names) {
+            val prop = kClass.members.firstOrNull { it.name == n } ?: continue
+            val v = prop.call(this) as? String
+            if (!v.isNullOrBlank()) return v
+        }
+        null
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private fun Any?.getIntField(vararg names: String): Int? {
+    if (this == null) return null
+    return try {
+        val kClass = this::class
+        for (n in names) {
+            val prop = kClass.members.firstOrNull { it.name == n } ?: continue
+            val v = prop.call(this)
+            when (v) {
+                is Int -> return v
+                is Long -> return v.toInt()
+            }
+        }
+        null
+    } catch (_: Exception) {
+        null
+    }
+}
+
+// Your member model type is `m` (res.member). We call reflection to fetch possible fields.
+private fun Any.phoneOrMobile(): String? =
+    getStringField("phone", "mobile", "mobile_number", "phone_number", "mobileNumber")
+
+private fun Any.createdAtAny(): String? =
+    getStringField("created_at", "createdAt", "profile_created", "profileCreated", "created", "created_date")
 
 @Composable
 private fun SectionTitle(title: String) {
@@ -288,14 +341,10 @@ private fun initialsFromName(name: String): String {
     return if (second != null) "$first$second" else "$first"
 }
 
-private fun formatMoney(v: Double): String {
-    // simple formatting without extra deps
-    return "%,.2f".format(v)
-}
+private fun formatMoney(v: Double): String = "%,.2f".format(v)
 
 private fun formatPrettyDate(raw: String?): String {
     if (raw.isNullOrBlank()) return "-"
-    // If backend sends "2025-10-19" or "2025-10-19T..." this will handle both
     return try {
         val datePart = raw.take(10)
         val dt = LocalDate.parse(datePart)
