@@ -1,6 +1,6 @@
 package com.radiant.sms.network
 
-import android.util.Log
+import com.radiant.sms.BuildConfig
 import com.squareup.moshi.Moshi
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -10,48 +10,36 @@ import java.util.concurrent.TimeUnit
 
 object NetworkModule {
 
-    /**
-     * IMPORTANT:
-     * - Base URL MUST end with a slash.
-     * - If your endpoints already contain "api/..." then keep BASE_URL without "api/".
-     */
+    // Make sure this ends with "/"
     private const val BASE_URL = "https://basic.bd-d.online/"
 
     fun createApiService(tokenProvider: () -> String?): ApiService {
 
-        // OkHttp built-in logger (prints request/response)
-        val httpLogger = HttpLoggingInterceptor { msg ->
-            Log.d("API_HTTP", msg)
-        }.apply {
-            level = HttpLoggingInterceptor.Level.BODY
+        // Logging interceptor
+        val httpLogger = HttpLoggingInterceptor().apply {
+            level = if (BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BODY   // Show logs in debug
+            } else {
+                HttpLoggingInterceptor.Level.NONE   // Hide logs in release
+            }
         }
 
         val client = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(45, TimeUnit.SECONDS)
             .writeTimeout(45, TimeUnit.SECONDS)
-
-            // 1) BODY logging
             .addInterceptor(httpLogger)
-
-            // 2) Our interceptor: adds headers + prints URL + status code
             .addInterceptor { chain ->
                 val token = tokenProvider()?.trim()
 
-                val reqBuilder = chain.request().newBuilder()
+                val requestBuilder = chain.request().newBuilder()
                     .header("Accept", "application/json")
 
                 if (!token.isNullOrBlank()) {
-                    reqBuilder.header("Authorization", "Bearer $token")
+                    requestBuilder.header("Authorization", "Bearer $token")
                 }
 
-                val request = reqBuilder.build()
-                Log.d("API_HTTP", "➡️ ${request.method} ${request.url}")
-
-                val response = chain.proceed(request)
-                Log.d("API_HTTP", "⬅️ ${response.code} ${request.url}")
-
-                response
+                chain.proceed(requestBuilder.build())
             }
             .build()
 
