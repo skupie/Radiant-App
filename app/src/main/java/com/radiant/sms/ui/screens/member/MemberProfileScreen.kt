@@ -6,25 +6,35 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.radiant.sms.data.TokenStore
 import com.radiant.sms.network.NetworkModule
 import com.radiant.sms.network.models.MemberProfileResponse
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
 fun MemberProfileScreen(nav: NavController) {
+
     val ctx = LocalContext.current
-    val api = remember { NetworkModule.api(ctx) }
     val scope = rememberCoroutineScope()
+    val tokenStore = remember { TokenStore(ctx) }
 
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var data by remember { mutableStateOf<MemberProfileResponse?>(null) }
 
     LaunchedEffect(Unit) {
-        runCatching { api.getMemberProfile() }
-            .onSuccess { data = it }
-            .onFailure { error = it.message }
+        try {
+            val token = tokenStore.tokenFlow.first()
+
+            val api = NetworkModule.createApiService { token }
+
+            data = api.getMemberProfile()
+        } catch (e: Exception) {
+            error = e.message
+        }
         loading = false
     }
 
