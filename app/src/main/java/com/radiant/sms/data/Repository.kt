@@ -41,16 +41,12 @@ suspend fun memberShareDetails(): MemberShareDetailsResponse {
     val response = api.getMemberShareDetails()
 
     if (response.isSuccessful) {
-        val body = response.body()
-        if (body != null) {
-            return body
-        } else {
-            throw Exception("Server returned empty body")
-        }
+        return response.body()
+            ?: throw Exception("Server returned empty body")
     } else {
-        val errorText = response.errorBody()?.string()
-        throw Exception("HTTP ${response.code()} - $errorText")
+        throw Exception("HTTP ${response.code()} - ${response.errorBody()?.string()}")
     }
+}
 }
     // ---------- ADMIN ----------
     suspend fun adminMembers(search: String?, perPage: Int?): AnyJson =
