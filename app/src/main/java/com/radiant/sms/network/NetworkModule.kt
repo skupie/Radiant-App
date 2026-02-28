@@ -1,10 +1,10 @@
-// app/src/main/java/com/radiant/sms/network/NetworkModule.kt
 package com.radiant.sms.network
 
 import android.content.Context
 import com.radiant.sms.data.TokenStore
 import com.squareup.moshi.Moshi
 import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.concurrent.TimeUnit
@@ -12,12 +12,13 @@ import java.util.concurrent.TimeUnit
 object NetworkModule {
 
     /**
-     * Set your production base URL here. Keep trailing slash.
+     * Set your production base URL here.
+     * IMPORTANT: Must end with "/"
      */
     private const val BASE_URL = "https://basic.bd-d.online/"
 
     /**
-     * Main entry point used by Composables:
+     * Used inside Composables:
      * val api = remember { NetworkModule.api(ctx) }
      */
     fun api(ctx: Context): ApiService {
@@ -26,24 +27,31 @@ object NetworkModule {
     }
 
     /**
-     * Used by AuthViewModel where token comes from memory.
+     * Used by AuthViewModel
      */
     fun createApiService(tokenProvider: () -> String?): ApiService {
+
+        // 🔎 Logging Interceptor (for debugging 404 etc.)
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+
         val client = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(45, TimeUnit.SECONDS)
             .writeTimeout(45, TimeUnit.SECONDS)
+            .addInterceptor(logging) // 👈 LOGS FULL REQUEST + RESPONSE
             .addInterceptor { chain ->
                 val token = tokenProvider()?.trim()
 
-                val reqBuilder = chain.request().newBuilder()
+                val requestBuilder = chain.request().newBuilder()
                     .header("Accept", "application/json")
 
                 if (!token.isNullOrBlank()) {
-                    reqBuilder.header("Authorization", "Bearer $token")
+                    requestBuilder.header("Authorization", "Bearer $token")
                 }
 
-                chain.proceed(reqBuilder.build())
+                chain.proceed(requestBuilder.build())
             }
             .build()
 
