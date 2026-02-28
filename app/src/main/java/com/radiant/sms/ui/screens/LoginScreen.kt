@@ -6,95 +6,86 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.radiant.sms.ui.viewmodel.AuthViewModel
+import com.radiant.sms.network.ApiClient
+import com.radiant.sms.network.LoginRequest
+import com.radiant.sms.ui.Routes
+import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreen(
-    navController: NavController,
-    vm: AuthViewModel = viewModel()
-) {
-    val state by vm.state.collectAsState()
-
+fun LoginScreen(nav: NavController) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var loading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
 
-    /**
-     * Navigate after successful login
-     */
-    LaunchedEffect(state.tokenPresent, state.role) {
-        if (state.tokenPresent) {
-            navController.navigate("member_share_details") {
-                popUpTo("login") { inclusive = true }
-                launchSingleTop = true
-            }
-        }
-    }
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-
-        Text(
-            text = "Login",
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-        Spacer(Modifier.height(24.dp))
+        Text("Login", style = MaterialTheme.typography.headlineMedium)
 
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
-
-        Spacer(Modifier.height(12.dp))
 
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
+            modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
+            visualTransformation = PasswordVisualTransformation()
         )
 
-        Spacer(Modifier.height(16.dp))
-
-        if (state.error != null) {
+        if (error != null) {
             Text(
-                text = state.error!!,
-                color = MaterialTheme.colorScheme.error
+                text = error!!,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium
             )
-            Spacer(Modifier.height(8.dp))
         }
 
         Button(
             onClick = {
-                vm.login(
-                    email = email.trim(),
-                    password = password
-                )
+                error = null
+                loading = true
+
+                scope.launch {
+                    try {
+                        // ✅ login (backend uses email)
+                        ApiClient.api.login(
+                            LoginRequest(
+                                email = email.trim(),
+                                password = password,
+                                device_name = "android"
+                            )
+                        )
+
+                        // ✅ Go directly to Share Details after login
+                        nav.navigate(Routes.MEMBER_SHARE_DETAILS) {
+                            popUpTo(Routes.LOGIN) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    } catch (e: Exception) {
+                        error = e.message ?: "Login failed"
+                    } finally {
+                        loading = false
+                    }
+                }
             },
-            enabled = !state.isLoading && email.isNotBlank() && password.isNotBlank(),
+            enabled = !loading,
             modifier = Modifier.fillMaxWidth()
         ) {
-            if (state.isLoading) {
-                CircularProgressIndicator(
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(10.dp))
-                Text("Signing in...")
-            } else {
-                Text("Login")
-            }
+            Text(if (loading) "Logging in..." else "Login")
         }
     }
 }
