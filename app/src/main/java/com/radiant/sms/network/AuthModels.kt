@@ -1,5 +1,5 @@
 // app/src/main/java/com/radiant/sms/network/models/AuthModels.kt
-package com.radiant.sms.network.models
+package com.radiant.sms.network
 
 import com.squareup.moshi.JsonClass
 
