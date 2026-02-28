@@ -25,12 +25,8 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
 
     private val tokenStore = TokenStore(app.applicationContext)
 
-    // Keep a cached token in memory for interceptor usage
-    private var cachedToken: String? = null
-
-    private val api = NetworkModule.createApiService {
-        cachedToken
-    }
+    // ✅ IMPORTANT: always use TokenStore-backed API
+    private val api = NetworkModule.api(app.applicationContext)
     private val repo = Repository(api)
 
     private val _state = MutableStateFlow(AuthState(isLoading = true))
@@ -38,12 +34,13 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch {
-            cachedToken = tokenStore.tokenFlow.first()
+            val token = tokenStore.tokenFlow.first()
             val role = tokenStore.roleFlow.first()
+
             _state.value = AuthState(
                 isLoading = false,
                 role = role,
-                tokenPresent = !cachedToken.isNullOrBlank()
+                tokenPresent = !token.isNullOrBlank()
             )
         }
     }
@@ -55,7 +52,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val res = repo.login(email, password)
 
-                cachedToken = res.token
+                // ✅ Save token to SharedPreferences
                 tokenStore.saveToken(res.token, res.user.role)
 
                 _state.value = AuthState(
@@ -86,15 +83,17 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                 )
 
             } catch (e: JsonDataException) {
-                Log.e("API_HTTP", "JSON parse error (likely HTML or unexpected response)", e)
+                Log.e("API_HTTP", "JSON parse error", e)
+
                 _state.value = AuthState(
                     isLoading = false,
-                    error = "Server returned non-JSON response (maybe 404 HTML). Check Logcat tag: API_HTTP",
+                    error = "Server returned invalid JSON",
                     tokenPresent = false
                 )
 
             } catch (e: Exception) {
-                Log.e("API_HTTP", "Login failed (exception)", e)
+                Log.e("API_HTTP", "Login failed", e)
+
                 _state.value = AuthState(
                     isLoading = false,
                     error = e.message ?: "Login failed",
@@ -107,7 +106,6 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     fun logout() {
         viewModelScope.launch {
             try { repo.logout() } catch (_: Exception) {}
-            cachedToken = null
             tokenStore.clear()
             _state.value = AuthState(isLoading = false, role = null, tokenPresent = false)
         }
