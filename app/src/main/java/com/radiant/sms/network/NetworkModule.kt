@@ -28,7 +28,7 @@ object NetworkModule {
 
         // ✅ HTTP logger (DISABLED)
         val httpLogger = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.NONE
+            level = HttpLoggingInterceptor.Level.BODY
         }
 
         val client = OkHttpClient.Builder()
