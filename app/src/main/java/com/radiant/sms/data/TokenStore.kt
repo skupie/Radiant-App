@@ -6,13 +6,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Simple SharedPreferences-based token store + in-memory StateFlows.
- * This matches what AuthViewModel expects:
- * - tokenFlow, roleFlow
- * - saveToken(token, role)
- * - clear()
+ * SharedPreferences-based token store + in-memory StateFlows.
  *
- * NOTE: For the OkHttp interceptor we also expose getTokenSync().
+ * IMPORTANT:
+ * We use commit() (sync) instead of apply() (async) so that
+ * screens that immediately call APIs after login don't read null token and get 401.
  */
 class TokenStore(context: Context) {
 
@@ -25,10 +23,11 @@ class TokenStore(context: Context) {
     val roleFlow: StateFlow<String?> = _roleFlow
 
     fun saveToken(token: String, role: String?) {
+        // commit() is synchronous (prevents race -> null token -> 401)
         prefs.edit()
             .putString(KEY_TOKEN, token)
             .putString(KEY_ROLE, role)
-            .apply()
+            .commit()
 
         _tokenFlow.value = token
         _roleFlow.value = role
@@ -37,7 +36,7 @@ class TokenStore(context: Context) {
     fun getTokenSync(): String? = prefs.getString(KEY_TOKEN, null)
 
     fun clear() {
-        prefs.edit().clear().apply()
+        prefs.edit().clear().commit()
         _tokenFlow.value = null
         _roleFlow.value = null
     }
