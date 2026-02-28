@@ -11,6 +11,7 @@ import androidx.navigation.NavController
 import com.radiant.sms.ui.Routes
 import com.radiant.sms.ui.viewmodel.AuthViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
     val s by vm.state.collectAsState()
@@ -18,12 +19,11 @@ fun LoginScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    // When login succeeds -> route based on role
     LaunchedEffect(s.tokenPresent, s.role) {
         if (s.tokenPresent) {
             val destination = when (s.role?.lowercase()) {
                 "admin" -> Routes.ADMIN_HOME
-                else -> Routes.MEMBER_SHARE_DETAILS // ✅ member goes here now
+                else -> Routes.MEMBER_SHARE_DETAILS
             }
 
             nav.navigate(destination) {
@@ -33,9 +33,14 @@ fun LoginScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
         }
     }
 
-    ScreenScaffold(title = "Login", nav = nav) {
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text("Login") })
+        }
+    ) { padding ->
         Column(
             modifier = Modifier
+                .padding(padding)
                 .fillMaxWidth()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -56,10 +61,7 @@ fun LoginScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
             )
 
             if (!s.error.isNullOrBlank()) {
-                Text(
-                    text = s.error ?: "",
-                    color = MaterialTheme.colorScheme.error
-                )
+                Text(text = s.error ?: "", color = MaterialTheme.colorScheme.error)
             }
 
             Button(
