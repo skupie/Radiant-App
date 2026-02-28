@@ -2,7 +2,7 @@
 package com.radiant.sms.data
 
 import com.radiant.sms.network.ApiService
-import com.radiant.sms.network.models.*
+import com.radiant.sms.network.*
 
 class Repository(private val api: ApiService) {
 
