@@ -1,6 +1,6 @@
 package com.radiant.sms.network
 
-import com.radiant.sms.network.models.*
+import com.radiant.sms.network.*
 import retrofit2.http.GET
 import retrofit2.http.Query
 
