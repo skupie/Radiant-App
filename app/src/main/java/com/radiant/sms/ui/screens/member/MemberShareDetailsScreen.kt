@@ -9,7 +9,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.TokenStore
 import com.radiant.sms.network.NetworkModule
-import com.radiant.sms.network.models.MemberShareDetailsResponse
+import com.radiant.sms.network.MemberShareDetailsResponse
 import kotlinx.coroutines.flow.first
 
 @Composable
