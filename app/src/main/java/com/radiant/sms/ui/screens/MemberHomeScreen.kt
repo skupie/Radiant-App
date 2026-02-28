@@ -2,47 +2,52 @@ package com.radiant.sms.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.radiant.sms.storage.TokenStore
 import com.radiant.sms.ui.Routes
-import com.radiant.sms.ui.viewmodel.AuthViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MemberHomeScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Member Dashboard") },
-                actions = {
-                    TextButton(onClick = {
-                        vm.logout()
-                        nav.navigate(Routes.LOGIN) { popUpTo(Routes.MEMBER_HOME) { inclusive = true } }
-                    }) { Text("Logout") }
-                }
-            )
-        }
-    ) { padding ->
-        Column(Modifier.padding(padding).padding(16.dp)) {
-            Text("Member features wired to API:", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            Bullet("Profile: GET /api/member/profile")
-            Bullet("Ledger: GET /api/member/ledger?year=YYYY")
-            Bullet("Due Summary: GET /api/member/due-summary?year=YYYY")
-            Bullet("Share Details: GET /api/member/share-details")
-            Spacer(Modifier.height(14.dp))
-            Text("Next: I can add real screens (lists/tables) based on your actual response JSON.")
-        }
-    }
-}
+fun MemberHomeScreen(nav: NavController) {
+    val ctx = LocalContext.current
 
-@Composable private fun Bullet(text: String) {
-    Row(Modifier.fillMaxWidth()) {
-        Text("• ")
-        Text(text)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text("Member Dashboard", style = MaterialTheme.typography.headlineSmall)
+
+        Button(onClick = { nav.navigate(Routes.MEMBER_PROFILE) }, modifier = Modifier.fillMaxWidth()) {
+            Text("Profile")
+        }
+        Button(onClick = { nav.navigate(Routes.MEMBER_LEDGER) }, modifier = Modifier.fillMaxWidth()) {
+            Text("Ledger")
+        }
+        Button(onClick = { nav.navigate(Routes.MEMBER_DUE_SUMMARY) }, modifier = Modifier.fillMaxWidth()) {
+            Text("Due Summary")
+        }
+        Button(onClick = { nav.navigate(Routes.MEMBER_SHARE_DETAILS) }, modifier = Modifier.fillMaxWidth()) {
+            Text("Share Details")
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        OutlinedButton(
+            onClick = {
+                TokenStore(ctx).clear()
+                nav.navigate(Routes.LOGIN) {
+                    popUpTo(Routes.SPLASH) { inclusive = true }
+                    launchSingleTop = true
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Logout")
+        }
     }
-    Spacer(Modifier.height(6.dp))
 }
