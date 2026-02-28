@@ -1,6 +1,7 @@
 package com.radiant.sms.network
 
 import android.content.Context
+import com.radiant.sms.AppConfig
 import com.radiant.sms.data.TokenStore
 import com.squareup.moshi.Moshi
 import okhttp3.OkHttpClient
@@ -12,13 +13,7 @@ import java.util.concurrent.TimeUnit
 object NetworkModule {
 
     /**
-     * Set your production base URL here.
-     * IMPORTANT: Must end with "/"
-     */
-    private const val BASE_URL = "https://basic.bd-d.online/"
-
-    /**
-     * Used inside Composables:
+     * Main entry point used by Composables:
      * val api = remember { NetworkModule.api(ctx) }
      */
     fun api(ctx: Context): ApiService {
@@ -27,11 +22,11 @@ object NetworkModule {
     }
 
     /**
-     * Used by AuthViewModel
+     * Used by AuthViewModel where token comes from memory.
      */
     fun createApiService(tokenProvider: () -> String?): ApiService {
 
-        // 🔎 Logging Interceptor (for debugging 404 etc.)
+        // ✅ Logging (shows full request + response in Logcat)
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
@@ -40,25 +35,25 @@ object NetworkModule {
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(45, TimeUnit.SECONDS)
             .writeTimeout(45, TimeUnit.SECONDS)
-            .addInterceptor(logging) // 👈 LOGS FULL REQUEST + RESPONSE
+            .addInterceptor(logging)
             .addInterceptor { chain ->
                 val token = tokenProvider()?.trim()
 
-                val requestBuilder = chain.request().newBuilder()
+                val reqBuilder = chain.request().newBuilder()
                     .header("Accept", "application/json")
 
                 if (!token.isNullOrBlank()) {
-                    requestBuilder.header("Authorization", "Bearer $token")
+                    reqBuilder.header("Authorization", "Bearer $token")
                 }
 
-                chain.proceed(requestBuilder.build())
+                chain.proceed(reqBuilder.build())
             }
             .build()
 
         val moshi = Moshi.Builder().build()
 
         return Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(AppConfig.BASE_URL) // ✅ SINGLE SOURCE OF TRUTH
             .client(client)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
