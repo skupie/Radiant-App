@@ -1,45 +1,36 @@
 package com.radiant.sms.network
 
-import com.radiant.sms.AppConfig
-import com.squareup.moshi.Moshi
-import okhttp3.Interceptor
+import android.content.Context
+import com.radiant.sms.storage.TokenStore
 import okhttp3.OkHttpClient
-import okhttp3.Response
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
-import retrofit2.converter.moshi.MoshiConverterFactory
-
-class AuthInterceptor(private val tokenProvider: () -> String?) : Interceptor {
-    override fun intercept(chain: Interceptor.Chain): Response {
-        val token = tokenProvider()
-        val req = if (!token.isNullOrBlank()) {
-            chain.request().newBuilder()
-                .addHeader("Authorization", "Bearer $token")
-                .build()
-        } else {
-            chain.request()
-        }
-        return chain.proceed(req)
-    }
-}
+import retrofit2.converter.gson.GsonConverterFactory
 
 object NetworkModule {
-    fun createApiService(tokenProvider: () -> String?): ApiService {
-        val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
-        }
+
+    // ✅ Change this to your domain
+    private const val BASE_URL = "https://basic.bd-d.online/"
+
+    fun api(context: Context): ApiService {
+        val tokenStore = TokenStore(context.applicationContext)
 
         val client = OkHttpClient.Builder()
-            .addInterceptor(AuthInterceptor(tokenProvider))
-            .addInterceptor(logging)
+            .addInterceptor { chain ->
+                val token = tokenStore.getToken()
+                val req = chain.request().newBuilder()
+                    .header("Accept", "application/json")
+
+                if (!token.isNullOrBlank()) {
+                    req.header("Authorization", "Bearer $token")
+                }
+                chain.proceed(req.build())
+            }
             .build()
 
-        val moshi = Moshi.Builder().build()
-
         return Retrofit.Builder()
-            .baseUrl(AppConfig.BASE_URL)
+            .baseUrl(BASE_URL)
             .client(client)
-            .addConverterFactory(MoshiConverterFactory.create(moshi).asLenient())
+            .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(ApiService::class.java)
     }
