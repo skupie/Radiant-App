@@ -1,6 +1,6 @@
 package com.radiant.sms.network
 
-data class MemberProfileResponse(val member: Member)
+typealias AnyJson = Map<String, Any?>
 
 data class MemberLedgerResponse(
     val year: Int,
@@ -17,28 +17,9 @@ data class MemberDueSummaryResponse(
     val summary: DueSummary
 )
 
-data class MemberShareDetailsResponse(
-    val member: Member,
-    val total_deposited: Double = 0.0,
-    val total_due: Double = 0.0
-)
-
-data class Member(
-    val id: Int,
-    val user_id: Int? = null,
-    val full_name: String? = null,
-    val nid: String? = null,
-    val email: String? = null,
-    val mobile_number: String? = null,
-    val nominee_name: String? = null,
-    val nominee_nid: String? = null,
-    val share: Int? = null,
-    val image_url: String? = null,
-    val nominee_photo_url: String? = null,
-    val total_deposited: Double? = null,
-    val due_total: Double? = null,
-    val due_months_count: Int? = null
-)
+// ✅ NOTE:
+// Do NOT define MemberProfileResponse here (you already have it in MemberProfileResponse.kt)
+// Do NOT define MemberShareDetailsResponse here (it exists in its own file)
 
 data class LedgerMonth(
     val month: Int,
