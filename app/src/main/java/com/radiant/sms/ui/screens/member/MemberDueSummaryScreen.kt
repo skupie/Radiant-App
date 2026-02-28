@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.TokenStore
 import com.radiant.sms.network.NetworkModule
-import com.radiant.sms.network.models.MemberDueSummaryResponse
+import com.radiant.sms.network.MemberDueSummaryResponse
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
