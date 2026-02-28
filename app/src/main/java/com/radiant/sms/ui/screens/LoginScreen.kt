@@ -29,31 +29,22 @@ fun LoginScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
      * - Saves token when available
      * - Navigates based on role
      */
-    LaunchedEffect(state.tokenPresent, state.role, state.token) {
-
-        // Save token if available
-        val token = state.token
-        if (!token.isNullOrBlank()) {
-            tokenStore.saveToken(token)
-        }
-
-        // Navigate when authenticated
-        if (state.tokenPresent) {
-            val role = (state.role ?: "").lowercase()
-
-            if (role == "admin") {
-                nav.navigate(Routes.ADMIN_HOME) {
-                    popUpTo(Routes.LOGIN) { inclusive = true }
-                    launchSingleTop = true
-                }
-            } else {
-                nav.navigate(Routes.MEMBER_HOME) {
-                    popUpTo(Routes.LOGIN) { inclusive = true }
-                    launchSingleTop = true
-                }
+    LaunchedEffect(state.tokenPresent, state.role) {
+    if (state.tokenPresent) {
+        val role = (state.role ?: "").lowercase()
+        if (role == "admin") {
+            nav.navigate(Routes.ADMIN_HOME) {
+                popUpTo(Routes.LOGIN) { inclusive = true }
+                launchSingleTop = true
+            }
+        } else {
+            nav.navigate(Routes.MEMBER_HOME) {
+                popUpTo(Routes.LOGIN) { inclusive = true }
+                launchSingleTop = true
             }
         }
     }
+}
 
     Scaffold(
         topBar = {
