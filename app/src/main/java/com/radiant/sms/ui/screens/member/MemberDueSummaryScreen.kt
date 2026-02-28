@@ -9,15 +9,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.radiant.sms.data.TokenStore
 import com.radiant.sms.network.NetworkModule
 import com.radiant.sms.network.models.MemberDueSummaryResponse
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
 fun MemberDueSummaryScreen(nav: NavController) {
     val ctx = LocalContext.current
-    val api = remember { NetworkModule.api(ctx) }
     val scope = rememberCoroutineScope()
+    val tokenStore = remember { TokenStore(ctx) }
 
     var yearText by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
@@ -28,10 +30,17 @@ fun MemberDueSummaryScreen(nav: NavController) {
         val year = yearText.trim().toIntOrNull()
         loading = true
         error = null
+
         scope.launch {
-            runCatching { api.getMemberDueSummary(year) }
-                .onSuccess { data = it }
-                .onFailure { error = it.message }
+            try {
+                val token = tokenStore.tokenFlow.first()
+                val api = NetworkModule.createApiService { token }
+
+                val res = api.getMemberDueSummary(year)
+                data = res
+            } catch (e: Exception) {
+                error = e.message
+            }
             loading = false
         }
     }
@@ -43,6 +52,7 @@ fun MemberDueSummaryScreen(nav: NavController) {
             label = { Text("Year (optional)") },
             modifier = Modifier.fillMaxWidth()
         )
+
         Button(onClick = { load() }, modifier = Modifier.fillMaxWidth()) {
             Text("Load Due Summary")
         }
