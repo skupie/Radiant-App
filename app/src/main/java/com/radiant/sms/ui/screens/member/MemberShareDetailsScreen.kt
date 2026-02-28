@@ -4,26 +4,31 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.radiant.sms.network.ApiClient
+import com.radiant.sms.data.Repository
 import com.radiant.sms.network.MemberShareDetailsResponse
+import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
 
 @Composable
 fun MemberShareDetailsScreen(nav: NavController) {
+
+    val context = LocalContext.current
+    val repo = remember { Repository(NetworkModule.api(context)) }
+    val scope = rememberCoroutineScope()
+
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var data by remember { mutableStateOf<MemberShareDetailsResponse?>(null) }
-
-    val scope = rememberCoroutineScope()
 
     fun load() {
         scope.launch {
             try {
                 loading = true
                 error = null
-                data = ApiClient.api.getMemberShareDetails()
+                data = repo.memberShareDetails()
             } catch (e: Exception) {
                 error = e.message ?: "Failed to load share details"
             } finally {
@@ -32,7 +37,9 @@ fun MemberShareDetailsScreen(nav: NavController) {
         }
     }
 
-    LaunchedEffect(Unit) { load() }
+    LaunchedEffect(Unit) {
+        load()
+    }
 
     ScreenScaffold(title = "Share Details", nav = nav) {
 
@@ -110,7 +117,7 @@ private fun InfoRow(label: String, value: String?) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
-        Text(value ?: "-", style = MaterialTheme.typography.bodyMedium)
+        Text(label)
+        Text(value ?: "-")
     }
 }
