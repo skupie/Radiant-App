@@ -1,6 +1,7 @@
 package com.radiant.sms.ui.screens.member
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -18,8 +19,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PullToRefreshBox
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -42,7 +44,6 @@ import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -51,22 +52,32 @@ import java.util.Locale
  * File: MemberShareDetailsScreen.kt
  * Path: app/src/main/java/com/radiant/sms/ui/screens/member/MemberShareDetailsScreen.kt
  *
- * Fixes included:
- * ✅ Material3-only modern pull refresh (PullToRefreshBox)
- * ✅ No refresh button (swipe to refresh only)
- * ✅ No back button on top-left for this screen (showBack = false)
- * ✅ Share "Created At" shows date only like: 19 October 2025
- * ✅ Added "Total Due" below "Total Deposit"
- * ✅ Member Information: remove Member ID -> show NID
- * ✅ Nominee Information: remove Phone/Relation/Address (keep only Name + NID)
+ * Fixes:
+ * ✅ Material3-only pull-to-refresh (PullToRefreshContainer + rememberPullToRefreshState)
+ * ✅ No PullToRefreshBox (your Compose version doesn't have it)
+ * ✅ NetworkModule.api(context) mismatch fixed by using NetworkModule.createApiService { token }
+ * ✅ Removed tokenStore param so AppNavHost.kt doesn't need updating
+ *
+ * UI requirements kept:
+ * ✅ Remove Member ID row, show Member NID
+ * ✅ Add Total Due below Total Deposit
+ * ✅ Created At shows date only (e.g., 19 October 2025)
+ * ✅ Nominee: keep only Name + NID (remove phone/relation/address)
+ * ✅ showBack = false
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MemberShareDetailsScreen(
-    nav: NavController,
-    tokenStore: TokenStore
-) {
-    val api = remember { NetworkModule.api(tokenStore) }
+fun MemberShareDetailsScreen(nav: NavController) {
+    val context = LocalContext.current
+    val tokenStore = remember { TokenStore(context) }
+
+    // NetworkModule.api(...) in your project expects Context, but we need auth token support.
+    // So we use createApiService with token provider.
+    val api = remember {
+        NetworkModule.createApiService(
+            tokenProvider = { tokenStore.getTokenSync() }
+        )
+    }
 
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -80,14 +91,12 @@ fun MemberShareDetailsScreen(
         loading = true
         error = null
         try {
-            // share + nominee + member (new endpoint already working)
+            // Member share details has a "data" wrapper in your model
             response = api.getMemberShareDetails()
 
-            // Total due (current year)
+            // Due summary returns MemberDueSummaryResponse directly (no .data wrapper)
             val year = LocalDate.now().year
             val dueRes = api.getMemberDueSummary(year)
-
-            // Models.kt shows: dueRes.summary.total
             totalDue = dueRes.summary.total.toString()
         } catch (t: Throwable) {
             error = t.message ?: "Unknown error"
@@ -96,20 +105,36 @@ fun MemberShareDetailsScreen(
         }
     }
 
+    // initial load
     LaunchedEffect(Unit) { load() }
 
+    // Material3 pull-to-refresh state (works without PullToRefreshBox)
     val pullState = rememberPullToRefreshState()
+
+    // When user triggers refresh, run load() and end refresh when done
+    LaunchedEffect(pullState.isRefreshing) {
+        if (pullState.isRefreshing) {
+            load()
+            pullState.endRefresh()
+        }
+    }
+
+    // Also end refresh if we finish loading by other means
+    LaunchedEffect(loading) {
+        if (!loading && pullState.isRefreshing) {
+            pullState.endRefresh()
+        }
+    }
 
     ScreenScaffold(
         title = "Share Details",
         nav = nav,
-        showBack = false // ✅ remove back button from top-left
+        showBack = false
     ) {
-        PullToRefreshBox(
-            isRefreshing = loading,
-            onRefresh = { scope.launch { load() } },
-            state = pullState,
-            modifier = Modifier.fillMaxSize()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(pullState.nestedScrollConnection)
         ) {
             Column(
                 modifier = Modifier
@@ -125,9 +150,9 @@ fun MemberShareDetailsScreen(
                     )
                 }
 
-                val member = response?.member
-                val share = response?.resolvedShare
-                val nominee = response?.resolvedNominee
+                val member = response?.data?.resolvedMember
+                val share = response?.data?.resolvedShare
+                val nominee = response?.data?.resolvedNominee
 
                 // ---------------- MEMBER ----------------
                 InfoCardWithPhoto(
@@ -138,7 +163,7 @@ fun MemberShareDetailsScreen(
                     InfoRow("Name", member?.displayName)
                     InfoRow("Email", member?.email)
 
-                    // ✅ Requirement: remove Member ID, replace with NID
+                    // ✅ Requirement: remove Member ID row, show Member NID
                     InfoRow("NID", member?.displayNid)
                 }
 
@@ -155,9 +180,8 @@ fun MemberShareDetailsScreen(
                     // ✅ Requirement: add Total Due below Total Deposit
                     InfoRow("Total Due", totalDue)
 
-                    // ✅ Requirement: show only date like "19 October 2025"
-                    // displayCreatedAt is a String from API; we format it safely.
-                    InfoRow("Created At", formatCreatedAtToDateOnly(share?.displayCreatedAt))
+                    // ✅ Requirement: date only (19 October 2025)
+                    InfoRow("Created At", formatIsoDate(share?.displayCreatedAt))
                 }
 
                 // ---------------- NOMINEE ----------------
@@ -168,48 +192,30 @@ fun MemberShareDetailsScreen(
                 ) {
                     InfoRow("Name", nominee?.name)
 
-                    // ✅ Requirement: remove Phone, Relation, Address
-                    InfoRow("NID", nominee?.nid)
+                    // ✅ Requirement: remove Phone/Relation/Address; keep only NID
+                    InfoRow("NID", nominee?.displayNid)
                 }
             }
+
+            // Material3 indicator
+            PullToRefreshContainer(
+                state = pullState,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
         }
     }
 }
 
-/**
- * Converts API timestamp to "d MMMM yyyy" (e.g., "19 October 2025")
- * Handles:
- * - ISO strings: 2025-10-19T10:15:30Z
- * - Common DB strings: 2025-10-19 10:15:30
- * - If parsing fails, returns original string
- */
-private fun formatCreatedAtToDateOnly(value: String?): String? {
+private fun formatIsoDate(value: String?): String? {
     if (value.isNullOrBlank()) return null
-
-    val outFmt = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH)
-    val zone = ZoneId.systemDefault()
-
-    // 1) Try ISO instant
-    runCatching {
+    return try {
         val instant = Instant.parse(value)
-        return outFmt.withZone(zone).format(instant)
+        val fmt = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH)
+            .withZone(ZoneId.systemDefault())
+        fmt.format(instant)
+    } catch (_: Throwable) {
+        value
     }
-
-    // 2) Try "yyyy-MM-dd HH:mm:ss" (Laravel often returns this)
-    runCatching {
-        val inFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
-        val ldt = LocalDateTime.parse(value, inFmt)
-        return ldt.toLocalDate().format(outFmt)
-    }
-
-    // 3) Try "yyyy-MM-dd" only
-    runCatching {
-        val inFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH)
-        val d = LocalDate.parse(value, inFmt)
-        return d.format(outFmt)
-    }
-
-    return value
 }
 
 @Composable
@@ -249,7 +255,6 @@ private fun InfoCardWithPhoto(
             content()
         }
     }
-
     Spacer(Modifier.height(12.dp))
 }
 
