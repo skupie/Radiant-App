@@ -24,9 +24,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val tokenStore = TokenStore(app.applicationContext)
 
-    private val api = NetworkModule.createApiService {
-        tokenStore.getTokenSync()
-    }
+    private val api = NetworkModule.createApiService(context)
 
     private val repo = Repository(api)
 
