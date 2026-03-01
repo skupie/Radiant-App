@@ -8,6 +8,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -61,7 +62,7 @@ fun MemberShareDetailsScreen(nav: NavController) {
             return@ScreenScaffold
         }
 
-        // ✅ IMPORTANT: unwrap `data` if server returns { data: {...} }
+        // ✅ unwrap `data` if server returns { data: {...} }
         val root = data?.effective
 
         val member = root?.resolvedMember
@@ -197,4 +198,28 @@ private fun MemberCirclePhoto(
             .size(44.dp)
             .clip(CircleShape)
     )
+}
+
+/**
+ * ✅ This was missing in your repo, causing:
+ * "Unresolved reference 'InfoRow'"
+ */
+@Composable
+private fun InfoRow(label: String, value: String?) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.weight(0.45f),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            text = value?.takeIf { it.isNotBlank() } ?: "-",
+            modifier = Modifier.weight(0.55f),
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.End
+        )
+    }
 }
