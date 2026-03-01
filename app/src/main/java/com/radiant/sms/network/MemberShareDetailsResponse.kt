@@ -5,16 +5,24 @@ import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
 data class MemberShareDetailsResponse(
+
+    // ✅ Some APIs wrap everything inside { "data": { ... } }
+    @Json(name = "data") val data: MemberShareDetailsResponse? = null,
+
     // Common nested variants
     @Json(name = "member") val member: MemberInfo? = null,
 
     @Json(name = "share") val share: ShareInfo? = null,
     @Json(name = "share_info") val shareInfo: ShareInfo? = null,
     @Json(name = "share_details") val shareDetails: ShareInfo? = null,
+    @Json(name = "share_information") val shareInformation: ShareInfo? = null,
+    @Json(name = "shareInformation") val shareInformationCamel: ShareInfo? = null,
 
     @Json(name = "nominee") val nominee: NomineeInfo? = null,
     @Json(name = "nominee_info") val nomineeInfo: NomineeInfo? = null,
     @Json(name = "nominee_details") val nomineeDetails: NomineeInfo? = null,
+    @Json(name = "nominee_information") val nomineeInformation: NomineeInfo? = null,
+    @Json(name = "nomineeInformation") val nomineeInformationCamel: NomineeInfo? = null,
 
     // Flat fallback variants (some APIs return these at top-level)
     @Json(name = "share_no") val shareNoFlat: String? = null,
@@ -30,43 +38,62 @@ data class MemberShareDetailsResponse(
     @Json(name = "nominee_photo") val nomineePhotoFlat: String? = null
 ) {
 
+    /**
+     * ✅ Always use the "real payload" if wrapped in data
+     */
+    val effective: MemberShareDetailsResponse
+        get() = data ?: this
+
     // ✅ For UI: always pick the best available share object
     val resolvedShare: ShareInfo?
-        get() = share ?: shareInfo ?: shareDetails ?: run {
-            if (
-                shareNoFlat == null &&
-                shareAmountFlat == null &&
-                totalDepositFlat == null &&
-                createdAtFlat == null
-            ) null
-            else ShareInfo(
-                shareNoSnake = shareNoFlat,
-                shareAmountSnake = shareAmountFlat,
-                totalDepositSnake = totalDepositFlat,
-                createdAtSnake = createdAtFlat
-            )
-        }
+        get() = effective.share
+            ?: effective.shareInfo
+            ?: effective.shareDetails
+            ?: effective.shareInformation
+            ?: effective.shareInformationCamel
+            ?: run {
+                if (
+                    effective.shareNoFlat == null &&
+                    effective.shareAmountFlat == null &&
+                    effective.totalDepositFlat == null &&
+                    effective.createdAtFlat == null
+                ) null
+                else ShareInfo(
+                    shareNoSnake = effective.shareNoFlat,
+                    shareAmountSnake = effective.shareAmountFlat,
+                    totalDepositSnake = effective.totalDepositFlat,
+                    createdAtSnake = effective.createdAtFlat
+                )
+            }
 
     // ✅ For UI: always pick the best available nominee object
     val resolvedNominee: NomineeInfo?
-        get() = nominee ?: nomineeInfo ?: nomineeDetails ?: run {
-            if (
-                nomineeNameFlat == null &&
-                nomineePhoneFlat == null &&
-                nomineeRelationFlat == null &&
-                nomineeNidFlat == null &&
-                nomineeAddressFlat == null &&
-                nomineePhotoFlat == null
-            ) null
-            else NomineeInfo(
-                name = nomineeNameFlat,
-                phone = nomineePhoneFlat,
-                relation = nomineeRelationFlat,
-                nid = nomineeNidFlat,
-                address = nomineeAddressFlat,
-                photo = nomineePhotoFlat
-            )
-        }
+        get() = effective.nominee
+            ?: effective.nomineeInfo
+            ?: effective.nomineeDetails
+            ?: effective.nomineeInformation
+            ?: effective.nomineeInformationCamel
+            ?: run {
+                if (
+                    effective.nomineeNameFlat == null &&
+                    effective.nomineePhoneFlat == null &&
+                    effective.nomineeRelationFlat == null &&
+                    effective.nomineeNidFlat == null &&
+                    effective.nomineeAddressFlat == null &&
+                    effective.nomineePhotoFlat == null
+                ) null
+                else NomineeInfo(
+                    name = effective.nomineeNameFlat,
+                    phone = effective.nomineePhoneFlat,
+                    relation = effective.nomineeRelationFlat,
+                    nid = effective.nomineeNidFlat,
+                    address = effective.nomineeAddressFlat,
+                    photo = effective.nomineePhotoFlat
+                )
+            }
+
+    val resolvedMember: MemberInfo?
+        get() = effective.member
 }
 
 @JsonClass(generateAdapter = true)
