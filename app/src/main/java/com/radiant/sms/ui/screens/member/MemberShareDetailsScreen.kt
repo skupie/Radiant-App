@@ -168,7 +168,6 @@ fun MemberShareDetailsScreen(nav: NavController) {
                         Spacer(modifier = Modifier.height(12.dp))
 
                         InfoRow("Share No", share?.displayShareNo ?: "-")
-                        InfoRow("Share Amount", share?.displayShareAmount ?: "-")
                         InfoRow("Total Deposit", share?.displayTotalDeposit ?: "-")
                         InfoRow("Total Due", totalDue ?: "-")
 
