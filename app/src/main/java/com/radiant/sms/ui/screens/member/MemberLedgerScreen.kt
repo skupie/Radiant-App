@@ -10,20 +10,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.radiant.sms.network.NetworkModule
 import com.radiant.sms.network.MemberProfileResponse
+import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
 
 @Composable
-fun MemberProfileScreen(nav: NavController) {
+fun MemberLedgerScreen(nav: NavController) {
     val context = LocalContext.current
     val api = remember { NetworkModule.api(context) }
+    val scope = rememberCoroutineScope()
 
     var response by remember { mutableStateOf<MemberProfileResponse?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-
-    val scope = rememberCoroutineScope()
 
     fun load() {
         scope.launch {
@@ -32,7 +31,7 @@ fun MemberProfileScreen(nav: NavController) {
             try {
                 response = api.getMemberProfile()
             } catch (e: Exception) {
-                error = e.message ?: "Failed to load profile"
+                error = e.message ?: "Failed to load member data"
             } finally {
                 isLoading = false
             }
@@ -42,7 +41,6 @@ fun MemberProfileScreen(nav: NavController) {
     LaunchedEffect(Unit) { load() }
 
     ScreenScaffold(nav = nav) {
-
         if (isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -53,22 +51,24 @@ fun MemberProfileScreen(nav: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             if (error != null) {
                 Text(error ?: "", color = MaterialTheme.colorScheme.error)
-                Spacer(Modifier.height(12.dp))
             }
 
-            response?.let { profile ->
-                Text("Profile", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(12.dp))
+            val member = response?.member
+            Text("Ledger", style = MaterialTheme.typography.titleLarge)
 
-                Text("Name: ${profile.member.displayName}")
-                Text("Email: ${profile.member.email}")
-                Text("Mobile: ${profile.member.mobileNumber}")
-                Text("NID: ${profile.member.displayNid}")
-            }
+            Text("Name: ${member?.fullName ?: "-"}")
+            Text("Email: ${member?.email ?: "-"}")
+            Text("Mobile: ${member?.mobileNumber ?: "-"}")
+            Text("NID: ${member?.nid ?: "-"}")
+
+            Spacer(Modifier.height(8.dp))
+            Text("Total Deposited: ${response?.totalDeposited ?: 0.0}")
+            Text("Total Due: ${response?.totalDue ?: 0.0}")
         }
     }
 }
