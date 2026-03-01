@@ -43,6 +43,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    
+    class AppViewModelFactory(
+    private val context: Context
+) : ViewModelProvider.Factory {
+
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        val api = NetworkModule.createApiService(context)
+
+        if (modelClass.isAssignableFrom(MemberLedgerViewModel::class.java)) {
+            return MemberLedgerViewModel(api) as T
+        }
+
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+
+    
+
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
