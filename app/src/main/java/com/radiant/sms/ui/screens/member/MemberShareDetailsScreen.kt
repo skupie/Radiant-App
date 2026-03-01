@@ -183,33 +183,39 @@ fun MemberShareDetailsScreen(nav: NavController) {
                 // 👩‍🦰 NOMINEE INFO
                 // =========================
                 ElevatedCard(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
+    modifier = Modifier.fillMaxWidth()
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
 
-                        Text(
-                            "Nominee Information",
-                            style = MaterialTheme.typography.titleLarge
-                        )
+        Text(
+            "Nominee Information",
+            style = MaterialTheme.typography.titleLarge
+        )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-                        ProfileImage(
-                            url = nominee?.displayPhotoUrl,
-                            size = 150.dp,
-                            contentDescription = "Nominee Image"
-                        )
+        // ✅ Center ONLY the image
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            ProfileImage(
+                url = nominee?.displayPhotoUrl,
+                size = 150.dp,
+                contentDescription = "Nominee Image"
+            )
+        }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-                        InfoRow("Name", nominee?.displayName ?: "")
-                        InfoRow("NID", nominee?.displayNid ?: "")
-                    }
-                }
+        InfoRow("Name", nominee?.displayName ?: "")
+        InfoRow("NID", nominee?.displayNid ?: "")
+    }
+}
 
                 Spacer(modifier = Modifier.height(24.dp))
             }
