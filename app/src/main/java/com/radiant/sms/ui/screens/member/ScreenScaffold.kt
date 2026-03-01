@@ -2,8 +2,8 @@ package com.radiant.sms.ui.components
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,16 +15,15 @@ import com.radiant.sms.data.TokenStore
 /**
  * ScreenScaffold
  *
- * - showBack: shows back arrow (disabled for hamburger usage)
- * - showHamburger: shows hamburger icon
- * - hideTitle: hides the title text completely (requirement #2)
- *
- * Menu Items:
- *  - Ledger
- *  - Due Summary
- *  - Share Details
- *  - Profile
- *  - Logout (clears TokenStore and navigates to login clearing backstack)
+ * Requirements implemented:
+ * 1) Remove back button and show Hamburger at top-left
+ * 2) Hide title text beside it
+ * 3) Menu options:
+ *    - Ledger
+ *    - Due Summary
+ *    - Share Details
+ *    - Profile
+ * 4) Logout (clears TokenStore and navigates to Login clearing backstack)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +48,34 @@ fun ScreenScaffold(
     val routeLogin = "login"
     // ------------------------------------------------------------------
 
+    fun navigateTop(route: String) {
+        menuExpanded = false
+        nav.navigate(route) {
+            // prevents multiple same destinations in backstack
+            launchSingleTop = true
+            restoreState = true
+
+            // keeps your bottom stack clean (single instance behavior)
+            val startId = nav.graph.startDestinationId
+            popUpTo(startId) {
+                saveState = true
+            }
+        }
+    }
+
+    fun logout() {
+        menuExpanded = false
+
+        // ✅ correct for your TokenStore
+        tokenStore.clear()
+
+        // clear all screens and go to login
+        nav.navigate(routeLogin) {
+            popUpTo(0) { inclusive = true }
+            launchSingleTop = true
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -62,7 +89,10 @@ fun ScreenScaffold(
                     when {
                         showHamburger -> {
                             IconButton(onClick = { menuExpanded = true }) {
-                                Icon(imageVector = Icons.Filled.Menu, contentDescription = "Menu")
+                                Icon(
+                                    imageVector = Icons.Filled.Menu,
+                                    contentDescription = "Menu"
+                                )
                             }
 
                             DropdownMenu(
@@ -71,57 +101,26 @@ fun ScreenScaffold(
                             ) {
                                 DropdownMenuItem(
                                     text = { Text("Ledger") },
-                                    onClick = {
-                                        menuExpanded = false
-                                        nav.navigate(routeLedger) {
-                                            launchSingleTop = true
-                                        }
-                                    }
+                                    onClick = { navigateTop(routeLedger) }
                                 )
                                 DropdownMenuItem(
                                     text = { Text("Due Summary") },
-                                    onClick = {
-                                        menuExpanded = false
-                                        nav.navigate(routeDueSummary) {
-                                            launchSingleTop = true
-                                        }
-                                    }
+                                    onClick = { navigateTop(routeDueSummary) }
                                 )
                                 DropdownMenuItem(
                                     text = { Text("Share Details") },
-                                    onClick = {
-                                        menuExpanded = false
-                                        nav.navigate(routeShareDetails) {
-                                            launchSingleTop = true
-                                        }
-                                    }
+                                    onClick = { navigateTop(routeShareDetails) }
                                 )
                                 DropdownMenuItem(
                                     text = { Text("Profile") },
-                                    onClick = {
-                                        menuExpanded = false
-                                        nav.navigate(routeProfile) {
-                                            launchSingleTop = true
-                                        }
-                                    }
+                                    onClick = { navigateTop(routeProfile) }
                                 )
 
                                 Divider()
 
                                 DropdownMenuItem(
                                     text = { Text("Logout") },
-                                    onClick = {
-                                        menuExpanded = false
-
-                                        // Clear token/session
-                                        tokenStore.clearTokenSync()
-
-                                        // Navigate to login and clear back stack
-                                        nav.navigate(routeLogin) {
-                                            popUpTo(0) { inclusive = true }
-                                            launchSingleTop = true
-                                        }
-                                    }
+                                    onClick = { logout() }
                                 )
                             }
                         }
