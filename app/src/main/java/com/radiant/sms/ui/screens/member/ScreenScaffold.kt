@@ -1,12 +1,25 @@
 package com.radiant.sms.ui.screens.member
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.*
+import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.TokenStore
 import com.radiant.sms.ui.Routes
@@ -29,17 +42,19 @@ fun ScreenScaffold(
         tokenStore.clear()
         nav.navigate(Routes.LOGIN) {
             popUpTo(0) { inclusive = true }
+            launchSingleTop = true
         }
     }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
 
-        // 🔥 Disable automatic insets completely
+        // IMPORTANT: disable default scaffold insets (prevents extra top padding)
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
 
         topBar = {
             TopAppBar(
+                // Disable topbar's own automatic insets too
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { if (!hideTitle) Text(title) },
                 navigationIcon = {
@@ -56,28 +71,28 @@ fun ScreenScaffold(
                                 text = { Text("Ledger") },
                                 onClick = {
                                     expanded = false
-                                    nav.navigate(Routes.MEMBER_LEDGER)
+                                    nav.navigate(Routes.MEMBER_LEDGER) { launchSingleTop = true }
                                 }
                             )
                             DropdownMenuItem(
                                 text = { Text("Due Summary") },
                                 onClick = {
                                     expanded = false
-                                    nav.navigate(Routes.MEMBER_DUE_SUMMARY)
+                                    nav.navigate(Routes.MEMBER_DUE_SUMMARY) { launchSingleTop = true }
                                 }
                             )
                             DropdownMenuItem(
                                 text = { Text("Share Details") },
                                 onClick = {
                                     expanded = false
-                                    nav.navigate(Routes.MEMBER_SHARE_DETAILS)
+                                    nav.navigate(Routes.MEMBER_SHARE_DETAILS) { launchSingleTop = true }
                                 }
                             )
                             DropdownMenuItem(
                                 text = { Text("Profile") },
                                 onClick = {
                                     expanded = false
-                                    nav.navigate(Routes.MEMBER_PROFILE)
+                                    nav.navigate(Routes.MEMBER_PROFILE) { launchSingleTop = true }
                                 }
                             )
                             Divider()
@@ -94,11 +109,11 @@ fun ScreenScaffold(
             )
         }
     ) {
-        // 🔥 THIS is the clean layout rule:
+        // Safe inset only for status bar (no camera overlap)
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()  // safe for notch
+                .statusBarsPadding()
                 .padding(horizontal = 16.dp)
         ) {
             content()
