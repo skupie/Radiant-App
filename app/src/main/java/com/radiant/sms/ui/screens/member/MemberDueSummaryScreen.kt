@@ -1,75 +1,66 @@
-package com.radiant.sms.ui.screens.member
+package com.radiant.sms.network
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
-import com.radiant.sms.data.Repository
-import com.radiant.sms.network.MemberDueSummaryResponse
-import com.radiant.sms.network.NetworkModule
-import kotlinx.coroutines.launch
-import java.util.Calendar
+import android.content.Context
+import com.radiant.sms.AppConfig
+import com.radiant.sms.data.TokenStore
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import okhttp3.Interceptor
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.moshi.MoshiConverterFactory
 
-@Composable
-fun MemberDueSummaryScreen(navController: NavController) {
-    val context = LocalContext.current
-    val api = remember { NetworkModule.api(context) }
-    val repo = remember { Repository(api) }
+object NetworkModule {
 
-    val scope = rememberCoroutineScope()
-
-    val calendar = remember { Calendar.getInstance() }
-    var selectedYear by remember { mutableIntStateOf(calendar.get(Calendar.YEAR)) }
-
-    var loading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var data by remember { mutableStateOf<MemberDueSummaryResponse?>(null) }
-
-    fun load() {
-        scope.launch {
-            loading = true
-            error = null
-            try {
-                data = repo.memberDueSummary(year = selectedYear)
-            } catch (e: Exception) {
-                error = e.message ?: "Unknown error"
-            } finally {
-                loading = false
-            }
+    fun createApiService(tokenProvider: () -> String?): ApiService {
+        val logger = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
         }
+
+        val defaultHeaders = Interceptor { chain ->
+            val token = tokenProvider()
+
+            val req = chain.request().newBuilder()
+                .header("Accept", "application/json")
+                .header("Content-Type", "application/json")
+                .header("User-Agent", "RadiantSMS-Android")
+                .apply {
+                    if (!token.isNullOrBlank()) {
+                        header("Authorization", "Bearer $token")
+                    }
+                }
+                .build()
+
+            chain.proceed(req)
+        }
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor(defaultHeaders)
+            .addInterceptor(logger)
+            .build()
+
+        // ✅ FIX: Moshi must support Kotlin classes that don't have @JsonClass(generateAdapter = true)
+        val moshi = Moshi.Builder()
+            .add(KotlinJsonAdapterFactory())
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl(AppConfig.BASE_URL)
+            .client(client)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(ApiService::class.java)
     }
 
-    LaunchedEffect(selectedYear) { load() }
+    fun api(context: Context): ApiService {
+        val tokenStore = TokenStore(context)
+        return createApiService { tokenStore.getTokenSync() }
+    }
 
-    ScreenScaffold(title = "Due Summary", nav = navController) {
-
-        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-
-            OutlinedTextField(
-                value = selectedYear.toString(),
-                onValueChange = { it.toIntOrNull()?.let { y -> selectedYear = y } },
-                label = { Text("Year") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Button(onClick = { load() }, enabled = !loading) {
-                Text(if (loading) "Loading..." else "Reload")
-            }
-
-            if (loading) {
-                CircularProgressIndicator()
-                return@Column
-            }
-
-            if (error != null) {
-                Text("Error: ${error!!}", color = MaterialTheme.colorScheme.error)
-                return@Column
-            }
-
-            Text(data?.toString() ?: "No data yet.")
-        }
+    fun absoluteUrl(path: String?): String? {
+        if (path.isNullOrBlank()) return null
+        if (path.startsWith("http://") || path.startsWith("https://")) return path
+        return AppConfig.BASE_URL.trimEnd('/') + "/" + path.trimStart('/')
     }
 }
