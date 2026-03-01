@@ -1,25 +1,14 @@
 package com.radiant.sms.ui.screens.member
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.Divider
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.TokenStore
 import com.radiant.sms.ui.Routes
@@ -27,17 +16,10 @@ import com.radiant.sms.ui.Routes
 /**
  * Member Screen Scaffold (used by ALL member pages)
  *
- * Changes:
- * 1) Back button removed and replaced with Hamburger
- * 2) Title hidden (no "Member Name" text beside hamburger)
- * 3) Menu:
- *    - Ledger
- *    - Due Summary
- *    - Share Details
- *    - Profile
- * 4) Logout:
- *    - tokenStore.clear()
- *    - navigate to login + clear backstack
+ * - Hamburger on top-left
+ * - No title (by default)
+ * - Menu:
+ *   Ledger, Due Summary, Share Details, Profile, Logout
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,9 +60,7 @@ fun ScreenScaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = {
-                    if (!hideTitle) Text(title)
-                },
+                title = { if (!hideTitle) Text(title) },
                 navigationIcon = {
                     when {
                         showHamburger -> {
@@ -127,15 +107,9 @@ fun ScreenScaffold(
                 }
             )
         }
-    ) { padding ->
-        // give all screens the same nice spacing
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
-        ) {
-            content(padding)
-        }
+    ) { innerPadding ->
+        // ✅ IMPORTANT: Do NOT add extra padding here.
+        // Let each screen apply innerPadding once.
+        content(innerPadding)
     }
 }
