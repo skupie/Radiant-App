@@ -1,91 +1,82 @@
 package com.radiant.sms.ui.screens.member
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.radiant.sms.data.Repository
 import com.radiant.sms.data.TokenStore
 import com.radiant.sms.network.NetworkModule
-import com.radiant.sms.network.MemberLedgerResponse
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MemberLedgerScreen(nav: NavController) {
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val tokenStore = remember { TokenStore(ctx) }
+fun MemberLedgerScreen(
+    navController: NavController,
+    memberId: Int
+) {
+    val context = LocalContext.current
+    val tokenStore = remember { TokenStore(context) }
+    val coroutineScope = rememberCoroutineScope()
 
-    var yearText by remember { mutableStateOf("") }
-    var loading by remember { mutableStateOf(false) }
+    val api = remember {
+        NetworkModule.createApiService {
+            tokenStore.getTokenSync()
+        }
+    }
+    val repo = remember { Repository(api) }
+
+    var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    var data by remember { mutableStateOf<MemberLedgerResponse?>(null) }
+    var ledgerData by remember { mutableStateOf<List<Any>>(emptyList()) }
 
     fun load() {
-        val year = yearText.trim().toIntOrNull()
-        loading = true
-        error = null
-
-        scope.launch {
+        coroutineScope.launch {
+            isLoading = true
+            error = null
             try {
-                val context = LocalContext.current
-                val api = NetworkModule.createApiService(context)
-                val res = api.getMemberLedger(year)
-                data = res
+                val res = repo.getMemberLedger(memberId)
+                ledgerData = res
             } catch (e: Exception) {
-                error = e.message
+                error = e.message ?: "Unknown error"
+            } finally {
+                isLoading = false
             }
-            loading = false
         }
     }
 
-    ScreenScaffold(title = "Ledger", nav = nav) {
-        OutlinedTextField(
-            value = yearText,
-            onValueChange = { yearText = it },
-            label = { Text("Year (optional)") },
-            modifier = Modifier.fillMaxWidth()
-        )
+    LaunchedEffect(memberId) { load() }
 
-        Button(onClick = { load() }, modifier = Modifier.fillMaxWidth()) {
-            Text("Load Ledger")
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Member Ledger") }
+            )
         }
-
-        Spacer(Modifier.height(10.dp))
-
-        when {
-            loading -> Text("Loading...")
-            error != null -> Text("Error: $error")
-            data == null -> Text("Enter a year and tap Load (or leave blank).")
-            else -> {
-                val res = data!!
-                Text("Year: ${res.year}")
-                Text("Year Total: ${res.year_total}")
-                Text("Lifetime Total: ${res.lifetime_total}")
-                Text("Available Years: ${res.available_years.joinToString()}")
-
-                Spacer(Modifier.height(10.dp))
-
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    res.monthly_data.forEach { month ->
-                        Text("== ${month.label ?: "Month ${month.month}"} | Total: ${month.total} ==")
-
-                        month.entries.forEach { e ->
-                            Text(
-                                "- ${e.deposited_at_local ?: "-"} | ${e.type ?: "-"} | " +
-                                        "Base ${e.base_amount} | Total ${e.total_amount}"
-                            )
-                            if (!e.notes.isNullOrBlank()) Text("  Notes: ${e.notes}")
-                        }
-
-                        Spacer(Modifier.height(8.dp))
-                    }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .padding(16.dp)
+                .fillMaxSize()
+        ) {
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
+            } else if (error != null) {
+                Text(
+                    text = error ?: "",
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = { load() }) { Text("Retry") }
+            } else {
+                Text("Ledger items: ${ledgerData.size}")
             }
         }
     }
