@@ -11,30 +11,28 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.network.NetworkModule
-import com.radiant.sms.network.MemberDueSummaryResponse
+import com.radiant.sms.network.MemberProfileResponse
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 
 @Composable
-fun MemberDueSummaryScreen(nav: NavController) {
+fun MemberProfileScreen(nav: NavController) {
     val context = LocalContext.current
     val api = remember { NetworkModule.api(context) }
 
-    var response by remember { mutableStateOf<MemberDueSummaryResponse?>(null) }
+    var response by remember { mutableStateOf<MemberProfileResponse?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
-    val year = remember { LocalDate.now().year }
 
     fun load() {
         scope.launch {
             isLoading = true
             error = null
             try {
-                response = api.getMemberDueSummary(year)
+                response = api.getMemberProfile()
             } catch (e: Exception) {
-                error = e.message ?: "Failed to load due summary"
+                error = e.message ?: "Failed to load profile"
             } finally {
                 isLoading = false
             }
@@ -62,19 +60,14 @@ fun MemberDueSummaryScreen(nav: NavController) {
                 Spacer(Modifier.height(12.dp))
             }
 
-            response?.let { due ->
-                Text("Year: $year", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(8.dp))
+            response?.let { profile ->
+                Text("Profile", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(12.dp))
 
-                Text("Total Due: ${due.summary.total}", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(16.dp))
-
-                Text("Monthly Due:", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-
-                due.summary.months.forEach { m ->
-                    Text("• ${m.year}-${m.month}: ${m.amount}")
-                }
+                Text("Name: ${profile.member.displayName}")
+                Text("Email: ${profile.member.email}")
+                Text("Mobile: ${profile.member.mobileNumber}")
+                Text("NID: ${profile.member.displayNid}")
             }
         }
     }
