@@ -2,6 +2,7 @@ package com.radiant.sms.ui.screens.member
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
@@ -14,12 +15,10 @@ import com.radiant.sms.data.TokenStore
 import com.radiant.sms.ui.Routes
 
 /**
- * Member Screen Scaffold (used by ALL member pages)
- *
- * - Hamburger on top-left
- * - No title (by default)
- * - Menu:
- *   Ledger, Due Summary, Share Details, Profile, Logout
+ * Full-screen scaffold:
+ * - NO automatic insets/padding (status bar, navigation bar, etc.)
+ * - Hamburger always visible
+ * - Title hidden by default
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,7 +28,7 @@ fun ScreenScaffold(
     hideTitle: Boolean = true,
     showHamburger: Boolean = true,
     showBack: Boolean = false,
-    content: @Composable (PaddingValues) -> Unit
+    content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
     val tokenStore = remember { TokenStore(context) }
@@ -41,9 +40,7 @@ fun ScreenScaffold(
         nav.navigate(route) {
             launchSingleTop = true
             restoreState = true
-            popUpTo(nav.graph.startDestinationId) {
-                saveState = true
-            }
+            popUpTo(nav.graph.startDestinationId) { saveState = true }
         }
     }
 
@@ -58,8 +55,14 @@ fun ScreenScaffold(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+
+        // ✅ remove ALL scaffold padding (top/bottom/gesture/status/nav)
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+
         topBar = {
             TopAppBar(
+                // ✅ remove TopAppBar insets too
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { if (!hideTitle) Text(title) },
                 navigationIcon = {
                     when {
@@ -100,16 +103,18 @@ fun ScreenScaffold(
 
                         showBack -> {
                             IconButton(onClick = { nav.popBackStack() }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back"
+                                )
                             }
                         }
                     }
                 }
             )
         }
-    ) { innerPadding ->
-        // ✅ IMPORTANT: Do NOT add extra padding here.
-        // Let each screen apply innerPadding once.
-        content(innerPadding)
+    ) {
+        // ✅ ignore padding completely
+        content()
     }
 }
