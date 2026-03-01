@@ -74,7 +74,7 @@ fun ScreenScaffold(
         gesturesEnabled = showHamburger,
         drawerContent = {
             ModalDrawerSheet {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.width(280.dp))
 
                 NavigationDrawerItem(
                     label = { Text("Ledger") },
