@@ -19,7 +19,6 @@ import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.LocalDate
-import java.time.format.TextStyle
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,7 +43,6 @@ fun MemberLedgerScreen(nav: NavController) {
             isLoading = true
             error = null
             try {
-                // Keep profile stable while switching years
                 if (profile == null) {
                     profile = api.getMemberProfile()
                 }
@@ -87,9 +85,6 @@ fun MemberLedgerScreen(nav: NavController) {
                 )
             }
 
-            // =========================
-            // Header (Name + Share Count)
-            // =========================
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -100,17 +95,8 @@ fun MemberLedgerScreen(nav: NavController) {
                     textAlign = TextAlign.Center,
                     fontWeight = FontWeight.SemiBold
                 )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = "Share Count: $shareCount",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
 
-            // =========================
-            // Year selector
-            // =========================
             YearPicker(
                 years = (ledger?.availableYears ?: emptyList()).sortedDescending(),
                 selectedYear = displayYear,
@@ -118,9 +104,6 @@ fun MemberLedgerScreen(nav: NavController) {
                 enabled = !isLoading
             )
 
-            // =========================
-            // All-time total deposits pill
-            // =========================
             ledger?.let { led ->
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -138,9 +121,6 @@ fun MemberLedgerScreen(nav: NavController) {
                 }
             }
 
-            // =========================
-            // Due Summary
-            // =========================
             ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier
@@ -178,9 +158,6 @@ fun MemberLedgerScreen(nav: NavController) {
                 }
             }
 
-            // =========================
-            // Ledger
-            // =========================
             ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier
@@ -311,7 +288,6 @@ private fun DueSummaryTable(
         return
     }
 
-    // Header row
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -357,7 +333,7 @@ private fun DueSummaryTable(
 }
 
 @Composable
-private fun TableHeaderCell(text: String, weight: Float, alignEnd: Boolean = false) {
+private fun RowScope.TableHeaderCell(text: String, weight: Float, alignEnd: Boolean = false) {
     Text(
         text = text,
         modifier = Modifier.weight(weight),
@@ -368,7 +344,7 @@ private fun TableHeaderCell(text: String, weight: Float, alignEnd: Boolean = fal
 }
 
 @Composable
-private fun TableBodyCell(
+private fun RowScope.TableBodyCell(
     text: String,
     weight: Float,
     alignEnd: Boolean = false,
@@ -513,6 +489,7 @@ private fun formatMoney(value: Double): String {
 
 private fun monthName(month: Int): String {
     return runCatching {
-        java.time.Month.of(month).getDisplayName(TextStyle.FULL, Locale.getDefault())
+        val months = java.text.DateFormatSymbols(Locale.getDefault()).months
+        if (month in 1..12) months[month - 1] else "Month $month"
     }.getOrDefault("Month $month")
 }
