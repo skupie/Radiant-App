@@ -1,8 +1,11 @@
 package com.radiant.sms.ui.screens.member
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
@@ -15,10 +18,10 @@ import com.radiant.sms.data.TokenStore
 import com.radiant.sms.ui.Routes
 
 /**
- * Full-screen scaffold:
- * - NO automatic insets/padding (status bar, navigation bar, etc.)
- * - Hamburger always visible
- * - Title hidden by default
+ * ScreenScaffold:
+ * - No extra scaffold padding/blank space
+ * - Content is kept out of status bar / camera notch (safeDrawing)
+ * - Hamburger menu always available
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,7 +31,7 @@ fun ScreenScaffold(
     hideTitle: Boolean = true,
     showHamburger: Boolean = true,
     showBack: Boolean = false,
-    content: @Composable () -> Unit
+    content: @Composable (PaddingValues) -> Unit
 ) {
     val context = LocalContext.current
     val tokenStore = remember { TokenStore(context) }
@@ -56,12 +59,12 @@ fun ScreenScaffold(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
 
-        // ✅ remove ALL scaffold padding (top/bottom/gesture/status/nav)
+        // ✅ Remove automatic insets that create blank space
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
 
         topBar = {
             TopAppBar(
-                // ✅ remove TopAppBar insets too
+                // ✅ Prevent TopAppBar from inflating due to default insets
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { if (!hideTitle) Text(title) },
                 navigationIcon = {
@@ -113,8 +116,15 @@ fun ScreenScaffold(
                 }
             )
         }
-    ) {
-        // ✅ ignore padding completely
-        content()
+    ) { innerPadding ->
+        // ✅ Apply safe area padding ONLY to content (not extra top blank space)
+        // safeDrawing handles camera/notch + status bar + nav bar safely
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+        ) {
+            content(innerPadding)
+        }
     }
 }
