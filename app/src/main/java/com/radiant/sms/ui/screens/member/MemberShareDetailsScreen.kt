@@ -1,14 +1,35 @@
 package com.radiant.sms.ui.screens.member
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Divider
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,13 +44,18 @@ import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun MemberShareDetailsScreen(nav: NavController, tokenStore: TokenStore) {
-    val api = remember { NetworkModule.api(tokenStore) }
+fun MemberShareDetailsScreen(nav: NavController) {
+    val context = LocalContext.current
+    val tokenStore = remember { TokenStore(context) }
+    val api = remember { NetworkModule.api(context) }
 
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -48,7 +74,9 @@ fun MemberShareDetailsScreen(nav: NavController, tokenStore: TokenStore) {
 
             // Total due (use current year)
             val year = LocalDate.now().year
-            totalDue = api.getMemberDueSummary(year).data?.summary?.total?.toString()
+            // NOTE: this assumes your ApiService has this endpoint/method already.
+            val dueResp = api.getMemberDueSummary(year)
+            totalDue = dueResp.data?.summary?.total?.toString()
         } catch (t: Throwable) {
             error = t.message ?: "Unknown error"
         } finally {
@@ -66,7 +94,8 @@ fun MemberShareDetailsScreen(nav: NavController, tokenStore: TokenStore) {
     ScreenScaffold(
         title = "Share Details",
         nav = nav,
-        showBack = false // ✅ remove back button for this screen
+        showBack = false // ✅ remove back button from top-left
+        // ✅ refresh button removed (we only use swipe-to-refresh)
     ) {
         Box(
             modifier = Modifier
@@ -80,7 +109,6 @@ fun MemberShareDetailsScreen(nav: NavController, tokenStore: TokenStore) {
                     .padding(bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-
                 if (!error.isNullOrBlank()) {
                     Text(
                         text = error!!,
@@ -88,9 +116,9 @@ fun MemberShareDetailsScreen(nav: NavController, tokenStore: TokenStore) {
                     )
                 }
 
-                val member = data?.data?.member
-                val share = data?.data?.share
-                val nominee = data?.data?.nominee
+                val member = data?.member
+                val share = data?.share
+                val nominee = data?.nominee
 
                 // ---------------- MEMBER ----------------
                 InfoCardWithPhoto(
@@ -101,7 +129,7 @@ fun MemberShareDetailsScreen(nav: NavController, tokenStore: TokenStore) {
                     InfoRow("Name", member?.displayName)
                     InfoRow("Email", member?.email)
 
-                    // ✅ Requirement: remove Member ID row, show Member NID
+                    // ✅ Remove Member ID row, show Member NID
                     InfoRow("NID", member?.displayNid)
                 }
 
@@ -115,11 +143,11 @@ fun MemberShareDetailsScreen(nav: NavController, tokenStore: TokenStore) {
                     InfoRow("Share Amount", share?.displayShareAmount)
                     InfoRow("Total Deposit", share?.displayTotalDeposit)
 
-                    // ✅ Requirement: add Total Due below Total Deposit
+                    // ✅ Add Total Due below Total Deposit
                     InfoRow("Total Due", totalDue)
 
-                    // ✅ Requirement: date only (19 October 2025)
-                    InfoRow("Created At", formatIsoDate(share?.displayCreatedAt))
+                    // ✅ Show only date like "19 October 2025"
+                    InfoRow("Created At", formatToReadableDate(share?.displayCreatedAt))
                 }
 
                 // ---------------- NOMINEE ----------------
@@ -130,12 +158,12 @@ fun MemberShareDetailsScreen(nav: NavController, tokenStore: TokenStore) {
                 ) {
                     InfoRow("Name", nominee?.name)
 
-                    // ✅ Requirement: remove Phone/Relation/Address; keep only NID
+                    // ✅ Remove Phone/Relation/Address; keep only NID
                     InfoRow("NID", nominee?.displayNid)
                 }
             }
 
-            // ✅ Swipe-to-refresh indicator (replaces Refresh button)
+            // ✅ Swipe-to-refresh indicator
             PullRefreshIndicator(
                 refreshing = loading,
                 state = pullRefreshState,
@@ -145,15 +173,36 @@ fun MemberShareDetailsScreen(nav: NavController, tokenStore: TokenStore) {
     }
 }
 
-private fun formatIsoDate(value: String?): String? {
+private fun formatToReadableDate(value: String?): String? {
     if (value.isNullOrBlank()) return null
-    return try {
-        val instant = Instant.parse(value)
-        val fmt = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH)
-            .withZone(ZoneId.systemDefault())
-        fmt.format(instant)
-    } catch (_: Throwable) {
-        value // fallback if parsing fails
+
+    val outFmt = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH)
+        .withZone(ZoneId.systemDefault())
+
+    // Try a few common timestamp formats safely
+    return runCatching {
+        // Example: 2025-10-19T12:34:56Z
+        outFmt.format(Instant.parse(value))
+    }.getOrElse {
+        runCatching {
+            // Example: 2025-10-19T12:34:56+06:00
+            outFmt.format(OffsetDateTime.parse(value).toInstant())
+        }.getOrElse {
+            runCatching {
+                // Example: 2025-10-19T12:34:56
+                val ldt = LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                ldt.toLocalDate().format(outFmt.withZone(ZoneId.systemDefault()))
+            }.getOrElse {
+                runCatching {
+                    // Example: 2025-10-19 12:34:56
+                    val dt = LocalDateTime.parse(value, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                    dt.toLocalDate().format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH))
+                }.getOrElse {
+                    // If nothing matches, show raw value
+                    value
+                }
+            }
+        }
     }
 }
 
@@ -177,7 +226,7 @@ private fun InfoCardWithPhoto(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    title,
+                    text = title,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f)
                 )
@@ -232,7 +281,7 @@ private fun InfoRow(label: String, value: String?) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label)
-        Text(value ?: "-")
+        Text(text = label)
+        Text(text = value ?: "-")
     }
 }
