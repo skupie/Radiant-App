@@ -1,81 +1,165 @@
 package com.radiant.sms.network
 
 import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
-// ------------------------------------------------------------
-// ROOT RESPONSE
-// ------------------------------------------------------------
-
+@JsonClass(generateAdapter = true)
 data class MemberShareDetailsResponse(
-    @Json(name = "member") val member: MemberInfo?,
-    @Json(name = "share") val share: ShareInfo?,
-    @Json(name = "nominee") val nominee: NomineeInfo?
-)
+    // Common nested variants
+    @Json(name = "member") val member: MemberInfo? = null,
 
-// ------------------------------------------------------------
-// MEMBER
-// ------------------------------------------------------------
+    @Json(name = "share") val share: ShareInfo? = null,
+    @Json(name = "share_info") val shareInfo: ShareInfo? = null,
+    @Json(name = "share_details") val shareDetails: ShareInfo? = null,
 
+    @Json(name = "nominee") val nominee: NomineeInfo? = null,
+    @Json(name = "nominee_info") val nomineeInfo: NomineeInfo? = null,
+    @Json(name = "nominee_details") val nomineeDetails: NomineeInfo? = null,
+
+    // Flat fallback variants (some APIs return these at top-level)
+    @Json(name = "share_no") val shareNoFlat: String? = null,
+    @Json(name = "share_amount") val shareAmountFlat: String? = null,
+    @Json(name = "total_deposit") val totalDepositFlat: String? = null,
+    @Json(name = "created_at") val createdAtFlat: String? = null,
+
+    @Json(name = "nominee_name") val nomineeNameFlat: String? = null,
+    @Json(name = "nominee_phone") val nomineePhoneFlat: String? = null,
+    @Json(name = "nominee_relation") val nomineeRelationFlat: String? = null,
+    @Json(name = "nominee_nid") val nomineeNidFlat: String? = null,
+    @Json(name = "nominee_address") val nomineeAddressFlat: String? = null,
+    @Json(name = "nominee_photo") val nomineePhotoFlat: String? = null
+) {
+
+    /** Always pick the best available share object */
+    val resolvedShare: ShareInfo?
+        get() = share ?: shareInfo ?: shareDetails ?: run {
+            if (
+                shareNoFlat == null &&
+                shareAmountFlat == null &&
+                totalDepositFlat == null &&
+                createdAtFlat == null
+            ) null
+            else ShareInfo(
+                shareNoSnake = shareNoFlat,
+                shareAmountSnake = shareAmountFlat,
+                totalDepositSnake = totalDepositFlat,
+                createdAtSnake = createdAtFlat
+            )
+        }
+
+    /** Always pick the best available nominee object */
+    val resolvedNominee: NomineeInfo?
+        get() = nominee ?: nomineeInfo ?: nomineeDetails ?: run {
+            if (
+                nomineeNameFlat == null &&
+                nomineePhoneFlat == null &&
+                nomineeRelationFlat == null &&
+                nomineeNidFlat == null &&
+                nomineeAddressFlat == null &&
+                nomineePhotoFlat == null
+            ) null
+            else NomineeInfo(
+                name = nomineeNameFlat,
+                phone = nomineePhoneFlat,
+                relation = nomineeRelationFlat,
+                nid = nomineeNidFlat,
+                address = nomineeAddressFlat,
+                photo = nomineePhotoFlat
+            )
+        }
+}
+
+@JsonClass(generateAdapter = true)
 data class MemberInfo(
-    @Json(name = "id") val id: Int?,
-    @Json(name = "name") val name: String?,
-    @Json(name = "email") val email: String?,
-    @Json(name = "phone") val phone: String?,
+    @Json(name = "name") val name: String? = null,
+    @Json(name = "full_name") val fullName: String? = null,
 
-    // Some APIs use "nid", some use "national_id"
+    @Json(name = "email") val email: String? = null,
+
+    @Json(name = "phone") val phone: String? = null,
+    @Json(name = "mobile_number") val mobileNumber: String? = null,
+
+    @Json(name = "member_id") val memberIdSnake: String? = null,
+    @Json(name = "id") val id: String? = null,
+
+    // ✅ NID variants (for your requirement: show Member NID instead of Member ID)
     @Json(name = "nid") val nid: String? = null,
     @Json(name = "national_id") val nationalId: String? = null,
+    @Json(name = "member_nid") val memberNid: String? = null,
 
-    @Json(name = "photo") val photo: String?
+    // photo variants
+    @Json(name = "photo") val photo: String? = null,
+    @Json(name = "image") val image: String? = null,
+    @Json(name = "avatar") val avatar: String? = null,
+    @Json(name = "profile_photo") val profilePhoto: String? = null,
+    @Json(name = "profile_photo_url") val profilePhotoUrl: String? = null
 ) {
-    val displayName: String
-        get() = name ?: "-"
+    val displayName: String?
+        get() = name ?: fullName
+
+    val displayPhone: String?
+        get() = phone ?: mobileNumber
+
+    val displayMemberId: String?
+        get() = memberIdSnake ?: id
+
+    val displayNid: String?
+        get() = nid ?: nationalId ?: memberNid
 
     val displayPhotoUrl: String?
-        get() = photo?.takeIf { it.isNotBlank() }
-
-    val displayNid: String
-        get() = (nid ?: nationalId).takeIf { !it.isNullOrBlank() } ?: "-"
+        get() = profilePhotoUrl ?: profilePhoto ?: avatar ?: image ?: photo
 }
 
-// ------------------------------------------------------------
-// SHARE
-// ------------------------------------------------------------
-
+@JsonClass(generateAdapter = true)
 data class ShareInfo(
-    @Json(name = "share_no") val shareNo: Int?,
-    @Json(name = "share_amount") val shareAmount: Double?,
-    @Json(name = "total_deposit") val totalDeposit: Double?,
-    @Json(name = "created_at") val createdAt: String?
+    @Json(name = "share_no") val shareNoSnake: String? = null,
+    @Json(name = "shareNo") val shareNoCamel: String? = null,
+
+    @Json(name = "share_amount") val shareAmountSnake: String? = null,
+    @Json(name = "shareAmount") val shareAmountCamel: String? = null,
+
+    @Json(name = "total_deposit") val totalDepositSnake: String? = null,
+    @Json(name = "totalDeposit") val totalDepositCamel: String? = null,
+
+    @Json(name = "created_at") val createdAtSnake: String? = null,
+    @Json(name = "createdAt") val createdAtCamel: String? = null
 ) {
-    val displayShareNo: String
-        get() = shareNo?.toString() ?: "-"
+    val displayShareNo: String?
+        get() = shareNoSnake ?: shareNoCamel
 
-    val displayShareAmount: String
-        get() = shareAmount?.toString() ?: "-"
+    val displayShareAmount: String?
+        get() = shareAmountSnake ?: shareAmountCamel
 
-    val displayTotalDeposit: String
-        get() = totalDeposit?.toString() ?: "-"
+    val displayTotalDeposit: String?
+        get() = totalDepositSnake ?: totalDepositCamel
 
     val displayCreatedAt: String?
-        get() = createdAt
+        get() = createdAtSnake ?: createdAtCamel
 }
 
-// ------------------------------------------------------------
-// NOMINEE
-// ------------------------------------------------------------
-
+@JsonClass(generateAdapter = true)
 data class NomineeInfo(
-    @Json(name = "name") val name: String?,
-    @Json(name = "nid") val nid: String?,
-    @Json(name = "photo") val photo: String?
-) {
-    val displayName: String
-        get() = name ?: "-"
+    @Json(name = "name") val name: String? = null,
 
-    val displayNid: String
-        get() = nid?.takeIf { it.isNotBlank() } ?: "-"
+    @Json(name = "phone") val phone: String? = null,
+    @Json(name = "mobile_number") val mobileNumber: String? = null,
+
+    @Json(name = "relation") val relation: String? = null,
+
+    @Json(name = "nid") val nid: String? = null,
+
+    @Json(name = "address") val address: String? = null,
+
+    // Photo variants
+    @Json(name = "photo") val photo: String? = null,
+    @Json(name = "image") val image: String? = null,
+    @Json(name = "avatar") val avatar: String? = null,
+    @Json(name = "profile_photo") val profilePhoto: String? = null,
+    @Json(name = "profile_photo_url") val profilePhotoUrl: String? = null
+) {
+    val displayPhone: String?
+        get() = phone ?: mobileNumber
 
     val displayPhotoUrl: String?
-        get() = photo?.takeIf { it.isNotBlank() }
+        get() = profilePhotoUrl ?: profilePhoto ?: avatar ?: image ?: photo
 }
