@@ -46,7 +46,6 @@ import com.radiant.sms.network.MemberProfileResponse
 import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
-import java.time.LocalDate
 import java.util.Locale
 
 @Composable
@@ -56,8 +55,8 @@ fun MemberDueSummaryScreen(navController: NavController) {
     val repo = remember { Repository(api) }
     val scope = rememberCoroutineScope()
 
-    val currentYear = remember { LocalDate.now().year }
-    var selectedYear by remember { mutableStateOf<Int?>(currentYear) }
+    // Default MUST be All Years
+    var selectedYear by remember { mutableStateOf<Int?>(null) }
 
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -82,7 +81,8 @@ fun MemberDueSummaryScreen(navController: NavController) {
         }
     }
 
-    LaunchedEffect(Unit) { load(currentYear) }
+    // Load All Years by default
+    LaunchedEffect(Unit) { load(null) }
 
     ScreenScaffold(
         nav = navController,
@@ -100,6 +100,13 @@ fun MemberDueSummaryScreen(navController: NavController) {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+
+            // Title added
+            Text(
+                text = "Due Summary",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold
+            )
 
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
