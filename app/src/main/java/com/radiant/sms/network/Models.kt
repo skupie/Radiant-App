@@ -1,46 +1,53 @@
-// app/src/main/java/com/radiant/sms/network/Models.kt
 package com.radiant.sms.network
 
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
+
+@JsonClass(generateAdapter = true)
 data class MemberLedgerResponse(
-    val year: Int,
-    val available_years: List<Int> = emptyList(),
-    val monthly_data: List<LedgerMonth> = emptyList(),
-    val year_total: Double = 0.0,
-    val lifetime_total: Double = 0.0,
-    val due_summary: DueSummary? = null
+    @Json(name = "year") val year: Int,
+    @Json(name = "available_years") val availableYears: List<Int> = emptyList(),
+    @Json(name = "monthly_data") val monthlyData: List<LedgerMonth> = emptyList(),
+    @Json(name = "year_total") val yearTotal: Double = 0.0,
+    @Json(name = "lifetime_total") val lifetimeTotal: Double = 0.0,
+    @Json(name = "due_summary") val dueSummary: DueSummary? = null
 )
 
+@JsonClass(generateAdapter = true)
 data class MemberDueSummaryResponse(
-    val selected_year: Int? = null,
-    val available_years: List<Int> = emptyList(),
-    val summary: DueSummary
+    @Json(name = "selected_year") val selectedYear: Int? = null,
+    @Json(name = "available_years") val availableYears: List<Int> = emptyList(),
+    @Json(name = "summary") val summary: DueSummary
 )
 
-
+@JsonClass(generateAdapter = true)
 data class LedgerMonth(
-    val month: Int,
-    val label: String? = null,
-    val total: Double = 0.0,
-    val entries: List<LedgerEntry> = emptyList()
+    @Json(name = "month") val month: Int,
+    @Json(name = "label") val label: String? = null,
+    @Json(name = "total") val total: Double = 0.0,
+    @Json(name = "entries") val entries: List<LedgerEntry> = emptyList()
 )
 
+@JsonClass(generateAdapter = true)
 data class LedgerEntry(
-    val id: Int,
-    val base_amount: Double = 0.0,
-    val total_amount: Double = 0.0,
-    val type: String? = null,
-    val deposited_at_local: String? = null,
-    val notes: String? = null
+    @Json(name = "id") val id: Int,
+    @Json(name = "base_amount") val baseAmount: Double = 0.0,
+    @Json(name = "total_amount") val totalAmount: Double = 0.0,
+    @Json(name = "type") val type: String? = null,
+    @Json(name = "deposited_at_local") val depositedAtLocal: String? = null,
+    @Json(name = "notes") val notes: String? = null
 )
 
+@JsonClass(generateAdapter = true)
 data class DueSummary(
-    val total: Double = 0.0,
-    val months: List<DueMonth> = emptyList()
+    @Json(name = "total") val total: Double = 0.0,
+    @Json(name = "months") val months: List<DueMonth> = emptyList()
 )
 
+@JsonClass(generateAdapter = true)
 data class DueMonth(
-    val year: Int,
-    val month: Int,
-    val base_amount: Double = 0.0,
-    val amount: Double = 0.0
+    @Json(name = "year") val year: Int,
+    @Json(name = "month") val month: Int,
+    @Json(name = "base_amount") val baseAmount: Double = 0.0,
+    @Json(name = "amount") val amount: Double = 0.0
 )
