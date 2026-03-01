@@ -3,81 +3,95 @@ package com.radiant.sms.ui.screens.member
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.Repository
-import com.radiant.sms.data.TokenStore
 import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MemberLedgerScreen(
     navController: NavController,
     memberId: Int
 ) {
     val context = LocalContext.current
-    val tokenStore = remember { TokenStore(context) }
-    val coroutineScope = rememberCoroutineScope()
-
-    val api = remember {
-        NetworkModule.createApiService {
-            tokenStore.getTokenSync()
-        }
-    }
+    val api = remember { NetworkModule.api(context) }
     val repo = remember { Repository(api) }
 
-    var isLoading by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
+
+    val calendar = remember { Calendar.getInstance() }
+    var selectedYear by remember { mutableIntStateOf(calendar.get(Calendar.YEAR)) }
+    var selectedMonth by remember { mutableIntStateOf(calendar.get(Calendar.MONTH) + 1) } // 1..12
+
+    var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var ledgerData by remember { mutableStateOf<List<Any>>(emptyList()) }
+
+    // If you have a real model, replace Any with your entry type:
+    var ledgerResponseText by remember { mutableStateOf<String?>(null) }
 
     fun load() {
-        coroutineScope.launch {
-            isLoading = true
+        scope.launch {
+            loading = true
             error = null
+            ledgerResponseText = null
+
             try {
-                val res = repo.getMemberLedger(memberId)
-                ledgerData = res
+                val res = repo.getMemberLedger(memberId, selectedYear, selectedMonth)
+                if (res.isSuccessful) {
+                    ledgerResponseText = res.body()?.toString()
+                } else {
+                    error = "Failed: ${res.code()} ${res.message()}"
+                }
             } catch (e: Exception) {
                 error = e.message ?: "Unknown error"
             } finally {
-                isLoading = false
+                loading = false
             }
         }
     }
 
-    LaunchedEffect(memberId) { load() }
+    LaunchedEffect(memberId, selectedYear, selectedMonth) {
+        load()
+    }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Member Ledger") }
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Text("Member Ledger (ID: $memberId)", style = MaterialTheme.typography.titleLarge)
+
+        Spacer(Modifier.height(12.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(
+                value = selectedYear.toString(),
+                onValueChange = { it.toIntOrNull()?.let { y -> selectedYear = y } },
+                label = { Text("Year") },
+                modifier = Modifier.weight(1f)
+            )
+
+            OutlinedTextField(
+                value = selectedMonth.toString(),
+                onValueChange = { it.toIntOrNull()?.let { m -> selectedMonth = m.coerceIn(1, 12) } },
+                label = { Text("Month") },
+                modifier = Modifier.weight(1f)
             )
         }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .padding(16.dp)
-                .fillMaxSize()
-        ) {
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else if (error != null) {
-                Text(
-                    text = error ?: "",
-                    color = MaterialTheme.colorScheme.error
-                )
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = { load() }) { Text("Retry") }
-            } else {
-                Text("Ledger items: ${ledgerData.size}")
-            }
+
+        Spacer(Modifier.height(12.dp))
+
+        Button(onClick = { load() }, enabled = !loading) {
+            Text(if (loading) "Loading..." else "Reload")
         }
+
+        Spacer(Modifier.height(12.dp))
+
+        error?.let {
+            Text(it, color = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.height(8.dp))
+        }
+
+        Text(ledgerResponseText ?: "No data yet.")
     }
 }
