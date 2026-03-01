@@ -202,7 +202,6 @@ fun MemberShareDetailsScreen(nav: NavController) {
                             url = nominee?.displayPhotoUrl,
                             size = 150.dp,
                             contentDescription = "Nominee Image"
-                            horizontalAlignment = Alignment.CenterHorizontally
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
