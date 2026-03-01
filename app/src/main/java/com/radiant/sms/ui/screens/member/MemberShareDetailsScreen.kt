@@ -1,9 +1,12 @@
 package com.radiant.sms.ui.screens.member
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,9 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.radiant.sms.network.NetworkModule
 import com.radiant.sms.network.MemberShareDetailsResponse
@@ -35,7 +39,6 @@ fun MemberShareDetailsScreen(nav: NavController) {
     var error by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
-
     val currentYear = remember { java.time.LocalDate.now().year }
 
     fun load() {
@@ -105,18 +108,12 @@ fun MemberShareDetailsScreen(nav: NavController) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
 
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(member?.displayPhotoUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Member Image",
-                            modifier = Modifier
-                                .size(160.dp)
-                                .clip(CircleShape)
-                                .align(Alignment.CenterHorizontally)
+                        // ✅ FIX: Always show something (placeholder if URL null/fails)
+                        ProfileImage(
+                            url = member?.displayPhotoUrl,
+                            size = 160.dp,
+                            contentDescription = "Member Image"
                         )
-
 
                         Spacer(modifier = Modifier.height(10.dp))
 
@@ -172,26 +169,18 @@ fun MemberShareDetailsScreen(nav: NavController) {
                         InfoRow("Total Due", totalDue ?: "-")
 
                         val createdAt = share?.displayCreatedAt
-                        if (!createdAt.isNullOrBlank()) {
-                            val formatted = runCatching {
-                                OffsetDateTime.parse(createdAt)
-                                    .format(
-                                        DateTimeFormatter.ofPattern(
-                                            "dd MMM yyyy",
-                                            Locale.ENGLISH
-                                        )
-                                    )
-                            }.getOrDefault(createdAt)
-
-                            InfoRow("Created At", formatted)
+                        val formattedCreatedAt = remember(createdAt) {
+                            createdAt?.let { formatDate(it) } ?: "-"
                         }
+
+                        InfoRow("Created At", formattedCreatedAt)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
                 // =========================
-                // 👥 NOMINEE INFO
+                // 👩‍🦰 NOMINEE INFO
                 // =========================
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth()
@@ -209,16 +198,10 @@ fun MemberShareDetailsScreen(nav: NavController) {
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(nominee?.displayPhotoUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Nominee Image",
-                            modifier = Modifier
-                                .size(150.dp)
-                                .clip(CircleShape)
-                                .align(Alignment.CenterHorizontally)
+                        ProfileImage(
+                            url = nominee?.displayPhotoUrl,
+                            size = 150.dp,
+                            contentDescription = "Nominee Image"
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -235,12 +218,100 @@ fun MemberShareDetailsScreen(nav: NavController) {
 }
 
 @Composable
+private fun ProfileImage(
+    url: String?,
+    size: Dp,
+    contentDescription: String
+) {
+    val context = LocalContext.current
+
+    // If URL is null/blank, show placeholder directly
+    if (url.isNullOrBlank()) {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(size * 0.45f)
+            )
+        }
+        return
+    }
+
+    SubcomposeAsyncImage(
+        model = ImageRequest.Builder(context)
+            .data(url)
+            .crossfade(true)
+            .build(),
+        contentDescription = contentDescription,
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape),
+        loading = {
+            Box(
+                modifier = Modifier
+                    .size(size)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        },
+        error = {
+            Box(
+                modifier = Modifier
+                    .size(size)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = contentDescription,
+                    modifier = Modifier.size(size * 0.45f)
+                )
+            }
+        }
+    )
+}
+
+@Composable
 private fun InfoRow(label: String, value: String) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodyMedium)
-        Text(text = value, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+private fun formatDate(dateString: String): String {
+    return try {
+        val odt = OffsetDateTime.parse(dateString)
+        val formatter = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.getDefault())
+        odt.format(formatter)
+    } catch (_: Exception) {
+        // fallback if server sends plain "2025-10-19" etc.
+        runCatching {
+            val dt = java.time.LocalDate.parse(dateString)
+            dt.format(DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.getDefault()))
+        }.getOrDefault(dateString)
     }
 }
