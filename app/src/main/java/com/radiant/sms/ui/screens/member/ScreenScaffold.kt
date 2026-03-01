@@ -3,6 +3,7 @@ package com.radiant.sms.ui.screens.member
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -11,18 +12,32 @@ import androidx.navigation.NavController
 fun ScreenScaffold(
     title: String,
     nav: NavController,
-    content: @Composable ColumnScope.() -> Unit
+    showBack: Boolean = true,
+    content: @Composable () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+            .padding(16.dp)
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { nav.popBackStack() }) { Text("Back") }
-            Text(title, style = MaterialTheme.typography.headlineSmall)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (showBack) {
+                OutlinedButton(onClick = { nav.popBackStack() }) {
+                    Text("Back")
+                }
+                Spacer(Modifier.width(12.dp))
+            }
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall
+            )
         }
+
+        Spacer(Modifier.height(16.dp))
         content()
     }
 }
