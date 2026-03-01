@@ -5,6 +5,7 @@ import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
 data class MemberShareDetailsResponse(
+    // Common nested variants
     @Json(name = "member") val member: MemberInfo? = null,
 
     @Json(name = "share") val share: ShareInfo? = null,
@@ -15,6 +16,7 @@ data class MemberShareDetailsResponse(
     @Json(name = "nominee_info") val nomineeInfo: NomineeInfo? = null,
     @Json(name = "nominee_details") val nomineeDetails: NomineeInfo? = null,
 
+    // Flat fallback variants (some APIs return these at top-level)
     @Json(name = "share_no") val shareNoFlat: String? = null,
     @Json(name = "share_amount") val shareAmountFlat: String? = null,
     @Json(name = "total_deposit") val totalDepositFlat: String? = null,
@@ -25,9 +27,11 @@ data class MemberShareDetailsResponse(
     @Json(name = "nominee_relation") val nomineeRelationFlat: String? = null,
     @Json(name = "nominee_nid") val nomineeNidFlat: String? = null,
     @Json(name = "nominee_address") val nomineeAddressFlat: String? = null,
-    @Json(name = "nominee_photo") val nomineePhotoFlat: String? = null
+    @Json(name = "nominee_photo") val nomineePhotoFlat: String? = null,
+    @Json(name = "nominee_photo_url") val nomineePhotoUrlFlat: String? = null // ✅ added (server often returns this)
 ) {
 
+    /** Always pick the best available share object */
     val resolvedShare: ShareInfo?
         get() = share ?: shareInfo ?: shareDetails ?: run {
             if (
@@ -44,6 +48,7 @@ data class MemberShareDetailsResponse(
             )
         }
 
+    /** Always pick the best available nominee object */
     val resolvedNominee: NomineeInfo?
         get() = nominee ?: nomineeInfo ?: nomineeDetails ?: run {
             if (
@@ -52,7 +57,8 @@ data class MemberShareDetailsResponse(
                 nomineeRelationFlat == null &&
                 nomineeNidFlat == null &&
                 nomineeAddressFlat == null &&
-                nomineePhotoFlat == null
+                nomineePhotoFlat == null &&
+                nomineePhotoUrlFlat == null
             ) null
             else NomineeInfo(
                 name = nomineeNameFlat,
@@ -60,7 +66,8 @@ data class MemberShareDetailsResponse(
                 relation = nomineeRelationFlat,
                 nid = nomineeNidFlat,
                 address = nomineeAddressFlat,
-                photo = nomineePhotoFlat
+                photo = nomineePhotoFlat,
+                nomineePhotoUrl = nomineePhotoUrlFlat
             )
         }
 }
@@ -78,15 +85,24 @@ data class MemberInfo(
     @Json(name = "member_id") val memberIdSnake: String? = null,
     @Json(name = "id") val id: String? = null,
 
+    // ✅ NID variants (show Member NID instead of Member ID)
     @Json(name = "nid") val nid: String? = null,
     @Json(name = "national_id") val nationalId: String? = null,
     @Json(name = "member_nid") val memberNid: String? = null,
 
+    // Photo variants
     @Json(name = "photo") val photo: String? = null,
     @Json(name = "image") val image: String? = null,
     @Json(name = "avatar") val avatar: String? = null,
     @Json(name = "profile_photo") val profilePhoto: String? = null,
-    @Json(name = "profile_photo_url") val profilePhotoUrl: String? = null
+    @Json(name = "profile_photo_url") val profilePhotoUrl: String? = null,
+
+    // ✅ IMPORTANT: your server resource returns "image_url"
+    @Json(name = "image_url") val imageUrl: String? = null,
+
+    // ✅ extra safe variants (won’t break anything)
+    @Json(name = "member_photo") val memberPhoto: String? = null,
+    @Json(name = "member_photo_url") val memberPhotoUrl: String? = null
 ) {
     val displayName: String?
         get() = name ?: fullName
@@ -100,8 +116,20 @@ data class MemberInfo(
     val displayNid: String?
         get() = nid ?: nationalId ?: memberNid
 
+    /**
+     * ✅ This is what your UI should use for the Member image.
+     * We now include "image_url" so the image will show.
+     */
     val displayPhotoUrl: String?
-        get() = profilePhotoUrl ?: profilePhoto ?: avatar ?: image ?: photo
+        get() =
+            imageUrl
+                ?: memberPhotoUrl
+                ?: profilePhotoUrl
+                ?: profilePhoto
+                ?: avatar
+                ?: image
+                ?: memberPhoto
+                ?: photo
 }
 
 @JsonClass(generateAdapter = true)
@@ -134,7 +162,6 @@ data class ShareInfo(
 @JsonClass(generateAdapter = true)
 data class NomineeInfo(
     @Json(name = "name") val name: String? = null,
-    @Json(name = "nominee_name") val nomineeNameAlt: String? = null,
 
     @Json(name = "phone") val phone: String? = null,
     @Json(name = "mobile_number") val mobileNumber: String? = null,
@@ -142,26 +169,30 @@ data class NomineeInfo(
     @Json(name = "relation") val relation: String? = null,
 
     @Json(name = "nid") val nid: String? = null,
-    @Json(name = "nominee_nid") val nomineeNidAlt: String? = null,
 
     @Json(name = "address") val address: String? = null,
 
+    // Photo variants
     @Json(name = "photo") val photo: String? = null,
     @Json(name = "image") val image: String? = null,
     @Json(name = "avatar") val avatar: String? = null,
     @Json(name = "profile_photo") val profilePhoto: String? = null,
     @Json(name = "profile_photo_url") val profilePhotoUrl: String? = null,
-    @Json(name = "nominee_photo") val nomineePhotoAlt: String? = null
+
+    // ✅ IMPORTANT: server returns nominee_photo_url in some endpoints
+    @Json(name = "nominee_photo_url") val nomineePhotoUrl: String? = null,
+    @Json(name = "image_url") val imageUrl: String? = null
 ) {
-    val displayName: String?
-        get() = name ?: nomineeNameAlt
-
-    val displayNid: String?
-        get() = nid ?: nomineeNidAlt
-
     val displayPhone: String?
         get() = phone ?: mobileNumber
 
     val displayPhotoUrl: String?
-        get() = profilePhotoUrl ?: profilePhoto ?: avatar ?: image ?: photo ?: nomineePhotoAlt
+        get() =
+            nomineePhotoUrl
+                ?: imageUrl
+                ?: profilePhotoUrl
+                ?: profilePhoto
+                ?: avatar
+                ?: image
+                ?: photo
 }
