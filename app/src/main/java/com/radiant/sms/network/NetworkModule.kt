@@ -12,7 +12,6 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 
 object NetworkModule {
 
-    // ✅ Made public so we can build absolute image urls
     const val BASE_URL = "https://basic.bd-d.online/"
 
     private fun authInterceptor(context: Context): Interceptor = Interceptor { chain ->
@@ -50,13 +49,6 @@ object NetworkModule {
         return retrofit.create(ApiService::class.java)
     }
 
-    /**
-     * Convert relative image path to absolute URL.
-     * Examples:
-     *  - "/storage/abc.jpg" -> "https://basic.bd-d.online/storage/abc.jpg"
-     *  - "storage/abc.jpg"  -> "https://basic.bd-d.online/storage/abc.jpg"
-     *  - "https://..." stays same
-     */
     fun absoluteUrl(path: String?): String? {
         if (path.isNullOrBlank()) return null
         val p = path.trim()
@@ -64,4 +56,7 @@ object NetworkModule {
         val normalized = if (p.startsWith("/")) p.drop(1) else p
         return BASE_URL + normalized
     }
+
+    // ✅ Backwards compatible wrapper for older code
+    fun createApiService(context: Context): ApiService = api(context)
 }
