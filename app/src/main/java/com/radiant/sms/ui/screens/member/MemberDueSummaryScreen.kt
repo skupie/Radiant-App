@@ -33,8 +33,8 @@ fun MemberDueSummaryScreen(nav: NavController) {
 
         scope.launch {
             try {
-                val token = tokenStore.tokenFlow.first()
-                val api = NetworkModule.createApiService { token }
+                val context = LocalContext.current
+                val api = NetworkModule.createApiService(context)
 
                 val res = api.getMemberDueSummary(year)
                 data = res
