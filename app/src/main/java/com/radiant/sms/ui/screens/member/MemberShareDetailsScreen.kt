@@ -111,7 +111,7 @@ fun MemberShareDetailsScreen(nav: NavController) {
                         // ✅ FIX: Always show something (placeholder if URL null/fails)
                         ProfileImage(
                             url = member?.displayPhotoUrl,
-                            size = 160.dp,
+                            size = 120.dp,
                             contentDescription = "Member Image"
                         )
 
@@ -205,7 +205,7 @@ fun MemberShareDetailsScreen(nav: NavController) {
         ) {
             ProfileImage(
                 url = nominee?.displayPhotoUrl,
-                size = 150.dp,
+                size = 100.dp,
                 contentDescription = "Nominee Image"
             )
         }
