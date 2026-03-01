@@ -8,15 +8,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.Repository
+import com.radiant.sms.network.MemberDueSummaryResponse
 import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
 @Composable
-fun MemberDueSummaryScreen(
-    navController: NavController,
-    memberId: Int
-) {
+fun MemberDueSummaryScreen(navController: NavController) {
     val context = LocalContext.current
     val api = remember { NetworkModule.api(context) }
     val repo = remember { Repository(api) }
@@ -28,21 +26,14 @@ fun MemberDueSummaryScreen(
 
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var dueSummaryText by remember { mutableStateOf<String?>(null) }
+    var data by remember { mutableStateOf<MemberDueSummaryResponse?>(null) }
 
     fun load() {
         scope.launch {
             loading = true
             error = null
-            dueSummaryText = null
-
             try {
-                val res = repo.getMemberDueSummary(memberId, selectedYear)
-                if (res.isSuccessful) {
-                    dueSummaryText = res.body()?.toString()
-                } else {
-                    error = "Failed: ${res.code()} ${res.message()}"
-                }
+                data = repo.memberDueSummary(year = selectedYear)
             } catch (e: Exception) {
                 error = e.message ?: "Unknown error"
             } finally {
@@ -51,35 +42,34 @@ fun MemberDueSummaryScreen(
         }
     }
 
-    LaunchedEffect(memberId, selectedYear) {
-        load()
-    }
+    LaunchedEffect(selectedYear) { load() }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Member Due Summary (ID: $memberId)", style = MaterialTheme.typography.titleLarge)
+    ScreenScaffold(title = "Due Summary", nav = navController) {
 
-        Spacer(Modifier.height(12.dp))
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
-        OutlinedTextField(
-            value = selectedYear.toString(),
-            onValueChange = { it.toIntOrNull()?.let { y -> selectedYear = y } },
-            label = { Text("Year") },
-            modifier = Modifier.fillMaxWidth()
-        )
+            OutlinedTextField(
+                value = selectedYear.toString(),
+                onValueChange = { it.toIntOrNull()?.let { y -> selectedYear = y } },
+                label = { Text("Year") },
+                modifier = Modifier.fillMaxWidth()
+            )
 
-        Spacer(Modifier.height(12.dp))
+            Button(onClick = { load() }, enabled = !loading) {
+                Text(if (loading) "Loading..." else "Reload")
+            }
 
-        Button(onClick = { load() }, enabled = !loading) {
-            Text(if (loading) "Loading..." else "Reload")
+            if (loading) {
+                CircularProgressIndicator()
+                return@Column
+            }
+
+            if (error != null) {
+                Text("Error: ${error!!}", color = MaterialTheme.colorScheme.error)
+                return@Column
+            }
+
+            Text(data?.toString() ?: "No data yet.")
         }
-
-        Spacer(Modifier.height(12.dp))
-
-        error?.let {
-            Text(it, color = MaterialTheme.colorScheme.error)
-            Spacer(Modifier.height(8.dp))
-        }
-
-        Text(dueSummaryText ?: "No data yet.")
     }
 }
