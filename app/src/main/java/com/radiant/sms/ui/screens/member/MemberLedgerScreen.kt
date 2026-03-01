@@ -8,15 +8,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.Repository
+import com.radiant.sms.network.MemberLedgerResponse
 import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
 @Composable
-fun MemberLedgerScreen(
-    navController: NavController,
-    memberId: Int
-) {
+fun MemberLedgerScreen(navController: NavController) {
     val context = LocalContext.current
     val api = remember { NetworkModule.api(context) }
     val repo = remember { Repository(api) }
@@ -25,27 +23,17 @@ fun MemberLedgerScreen(
 
     val calendar = remember { Calendar.getInstance() }
     var selectedYear by remember { mutableIntStateOf(calendar.get(Calendar.YEAR)) }
-    var selectedMonth by remember { mutableIntStateOf(calendar.get(Calendar.MONTH) + 1) } // 1..12
 
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-
-    // If you have a real model, replace Any with your entry type:
-    var ledgerResponseText by remember { mutableStateOf<String?>(null) }
+    var data by remember { mutableStateOf<MemberLedgerResponse?>(null) }
 
     fun load() {
         scope.launch {
             loading = true
             error = null
-            ledgerResponseText = null
-
             try {
-                val res = repo.getMemberLedger(memberId, selectedYear, selectedMonth)
-                if (res.isSuccessful) {
-                    ledgerResponseText = res.body()?.toString()
-                } else {
-                    error = "Failed: ${res.code()} ${res.message()}"
-                }
+                data = repo.memberLedger(year = selectedYear)
             } catch (e: Exception) {
                 error = e.message ?: "Unknown error"
             } finally {
@@ -54,44 +42,34 @@ fun MemberLedgerScreen(
         }
     }
 
-    LaunchedEffect(memberId, selectedYear, selectedMonth) {
-        load()
-    }
+    LaunchedEffect(selectedYear) { load() }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Member Ledger (ID: $memberId)", style = MaterialTheme.typography.titleLarge)
+    ScreenScaffold(title = "Ledger", nav = navController) {
 
-        Spacer(Modifier.height(12.dp))
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(
                 value = selectedYear.toString(),
                 onValueChange = { it.toIntOrNull()?.let { y -> selectedYear = y } },
                 label = { Text("Year") },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth()
             )
 
-            OutlinedTextField(
-                value = selectedMonth.toString(),
-                onValueChange = { it.toIntOrNull()?.let { m -> selectedMonth = m.coerceIn(1, 12) } },
-                label = { Text("Month") },
-                modifier = Modifier.weight(1f)
-            )
+            Button(onClick = { load() }, enabled = !loading) {
+                Text(if (loading) "Loading..." else "Reload")
+            }
+
+            if (loading) {
+                CircularProgressIndicator()
+                return@Column
+            }
+
+            if (error != null) {
+                Text("Error: ${error!!}", color = MaterialTheme.colorScheme.error)
+                return@Column
+            }
+
+            Text(data?.toString() ?: "No data yet.")
         }
-
-        Spacer(Modifier.height(12.dp))
-
-        Button(onClick = { load() }, enabled = !loading) {
-            Text(if (loading) "Loading..." else "Reload")
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        error?.let {
-            Text(it, color = MaterialTheme.colorScheme.error)
-            Spacer(Modifier.height(8.dp))
-        }
-
-        Text(ledgerResponseText ?: "No data yet.")
     }
 }
