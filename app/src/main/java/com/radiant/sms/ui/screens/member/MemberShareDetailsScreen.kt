@@ -49,7 +49,7 @@ fun MemberShareDetailsScreen(nav: NavController) {
 
                 // Due Summary (safe)
                 runCatching {
-                    val dueRes = api.getMemberDueSummary(currentYear) // Int? expected
+                    val dueRes = api.getMemberDueSummary(currentYear)
                     totalDue = dueRes.summary.total.toString()
                 }
             } catch (e: Exception) {
@@ -62,19 +62,14 @@ fun MemberShareDetailsScreen(nav: NavController) {
 
     LaunchedEffect(Unit) { load() }
 
+    // ✅ NO padding param anymore (prevents extra top blank space)
     ScreenScaffold(
-        title = "",
-        nav = nav,
-        showBack = false,
-        showHamburger = true,
-        hideTitle = true
-    ) { padding ->
+        nav = nav
+    ) {
 
         if (isLoading) {
             Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
@@ -85,7 +80,6 @@ fun MemberShareDetailsScreen(nav: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
             if (error != null) {
