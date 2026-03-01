@@ -27,8 +27,7 @@ data class MemberShareDetailsResponse(
     @Json(name = "nominee_relation") val nomineeRelationFlat: String? = null,
     @Json(name = "nominee_nid") val nomineeNidFlat: String? = null,
     @Json(name = "nominee_address") val nomineeAddressFlat: String? = null,
-    @Json(name = "nominee_photo") val nomineePhotoFlat: String? = null,
-    @Json(name = "nominee_photo_url") val nomineePhotoUrlFlat: String? = null // ✅ added (server often returns this)
+    @Json(name = "nominee_photo") val nomineePhotoFlat: String? = null
 ) {
 
     /** Always pick the best available share object */
@@ -57,8 +56,7 @@ data class MemberShareDetailsResponse(
                 nomineeRelationFlat == null &&
                 nomineeNidFlat == null &&
                 nomineeAddressFlat == null &&
-                nomineePhotoFlat == null &&
-                nomineePhotoUrlFlat == null
+                nomineePhotoFlat == null
             ) null
             else NomineeInfo(
                 name = nomineeNameFlat,
@@ -66,8 +64,7 @@ data class MemberShareDetailsResponse(
                 relation = nomineeRelationFlat,
                 nid = nomineeNidFlat,
                 address = nomineeAddressFlat,
-                photo = nomineePhotoFlat,
-                nomineePhotoUrl = nomineePhotoUrlFlat
+                photo = nomineePhotoFlat
             )
         }
 }
@@ -90,19 +87,12 @@ data class MemberInfo(
     @Json(name = "national_id") val nationalId: String? = null,
     @Json(name = "member_nid") val memberNid: String? = null,
 
-    // Photo variants
+    // photo variants
     @Json(name = "photo") val photo: String? = null,
     @Json(name = "image") val image: String? = null,
     @Json(name = "avatar") val avatar: String? = null,
     @Json(name = "profile_photo") val profilePhoto: String? = null,
-    @Json(name = "profile_photo_url") val profilePhotoUrl: String? = null,
-
-    // ✅ IMPORTANT: your server resource returns "image_url"
-    @Json(name = "image_url") val imageUrl: String? = null,
-
-    // ✅ extra safe variants (won’t break anything)
-    @Json(name = "member_photo") val memberPhoto: String? = null,
-    @Json(name = "member_photo_url") val memberPhotoUrl: String? = null
+    @Json(name = "profile_photo_url") val profilePhotoUrl: String? = null
 ) {
     val displayName: String?
         get() = name ?: fullName
@@ -116,20 +106,8 @@ data class MemberInfo(
     val displayNid: String?
         get() = nid ?: nationalId ?: memberNid
 
-    /**
-     * ✅ This is what your UI should use for the Member image.
-     * We now include "image_url" so the image will show.
-     */
     val displayPhotoUrl: String?
-        get() =
-            imageUrl
-                ?: memberPhotoUrl
-                ?: profilePhotoUrl
-                ?: profilePhoto
-                ?: avatar
-                ?: image
-                ?: memberPhoto
-                ?: photo
+        get() = profilePhotoUrl ?: profilePhoto ?: avatar ?: image ?: photo
 }
 
 @JsonClass(generateAdapter = true)
@@ -177,22 +155,18 @@ data class NomineeInfo(
     @Json(name = "image") val image: String? = null,
     @Json(name = "avatar") val avatar: String? = null,
     @Json(name = "profile_photo") val profilePhoto: String? = null,
-    @Json(name = "profile_photo_url") val profilePhotoUrl: String? = null,
-
-    // ✅ IMPORTANT: server returns nominee_photo_url in some endpoints
-    @Json(name = "nominee_photo_url") val nomineePhotoUrl: String? = null,
-    @Json(name = "image_url") val imageUrl: String? = null
+    @Json(name = "profile_photo_url") val profilePhotoUrl: String? = null
 ) {
+    val displayName: String?
+        get() = name
+
     val displayPhone: String?
         get() = phone ?: mobileNumber
 
+    // ✅ REQUIRED: fixes build error in MemberShareDetailsScreen.kt (nominee?.displayNid)
+    val displayNid: String?
+        get() = nid
+
     val displayPhotoUrl: String?
-        get() =
-            nomineePhotoUrl
-                ?: imageUrl
-                ?: profilePhotoUrl
-                ?: profilePhoto
-                ?: avatar
-                ?: image
-                ?: photo
+        get() = profilePhotoUrl ?: profilePhoto ?: avatar ?: image ?: photo
 }
