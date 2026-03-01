@@ -19,7 +19,6 @@ import coil.request.ImageRequest
 import com.radiant.sms.data.TokenStore
 import com.radiant.sms.network.NetworkModule
 import com.radiant.sms.network.MemberShareDetailsResponse
-import com.radiant.sms.ui.components.ScreenScaffold
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
