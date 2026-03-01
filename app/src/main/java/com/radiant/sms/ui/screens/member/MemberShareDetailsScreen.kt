@@ -11,47 +11,46 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.radiant.sms.data.TokenStore
 import com.radiant.sms.network.NetworkModule
 import com.radiant.sms.network.MemberShareDetailsResponse
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
 fun MemberShareDetailsScreen(nav: NavController) {
+
     val context = LocalContext.current
-    val tokenStore = remember { TokenStore(context) }
     val api = remember { NetworkModule.api(context) }
 
     var response by remember { mutableStateOf<MemberShareDetailsResponse?>(null) }
+    var totalDue by remember { mutableStateOf<String?>(null) }
+
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    var totalDue by remember { mutableStateOf<String?>(null) }
-    val currentYear = remember { java.time.LocalDate.now().year }
-
     val scope = rememberCoroutineScope()
+    val currentYear = remember { java.time.LocalDate.now().year }
 
     fun load() {
         scope.launch {
             isLoading = true
             error = null
             try {
-                response = api.getMemberShareDetails()
+                val res = api.getMemberShareDetails()
+                response = res
 
-                // Due Summary (safe)
+                // Load due summary safely
                 runCatching {
                     val dueRes = api.getMemberDueSummary(currentYear)
                     totalDue = dueRes.summary.total.toString()
                 }
+
             } catch (e: Exception) {
                 error = e.message ?: "Failed to load share details"
             } finally {
@@ -62,10 +61,8 @@ fun MemberShareDetailsScreen(nav: NavController) {
 
     LaunchedEffect(Unit) { load() }
 
-    // ✅ NO padding param anymore (prevents extra top blank space)
-    ScreenScaffold(
-        nav = nav
-    ) {
+    // ✅ New Scaffold (no padding lambda)
+    ScreenScaffold(nav = nav) {
 
         if (isLoading) {
             Box(
@@ -82,157 +79,154 @@ fun MemberShareDetailsScreen(nav: NavController) {
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
+
             if (error != null) {
                 Text(
                     text = error ?: "",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium
+                    color = MaterialTheme.colorScheme.error
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
             response?.let { res ->
+
                 val member = res.member
-                val share = res.share
-                val nominee = res.nominee
 
-                MemberHeaderCard(
-                    memberName = member?.displayName,
-                    email = member?.email,
-                    nid = member?.displayNid,
-                    photoUrl = member?.displayPhotoUrl,
-                    tokenStore = tokenStore
-                )
+                // =========================
+                // 👤 MEMBER CARD
+                // =========================
 
-                InfoCard(title = "Share Information") {
-                    InfoRow("Share No", share?.displayShareNo)
-                    InfoRow("Share Amount", share?.displayShareAmount)
-                    InfoRow("Total Deposit", share?.displayTotalDeposit)
-                    InfoRow("Total Due", totalDue ?: "-")
-                    InfoRow("Created At", formatIsoDate(share?.displayCreatedAt))
-                }
-
-                Spacer(Modifier.height(12.dp))
-
-                InfoCardWithPhoto(
-                    title = "Nominee Information",
-                    photoUrl = nominee?.displayPhotoUrl,
-                    photoSize = 96.dp,
-                    tokenStore = tokenStore
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    InfoRow("Name", nominee?.name)
-                    InfoRow("NID", nominee?.displayNid)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(member.imageUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Member Image",
+                            modifier = Modifier
+                                .size(140.dp)
+                                .clip(CircleShape)
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = member.displayName ?: "",
+                            style = MaterialTheme.typography.titleLarge,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = member.email ?: "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = "NID: ${member.displayNid}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
-            }
-        }
-    }
-}
 
-private fun formatIsoDate(value: String?): String? {
-    if (value.isNullOrBlank()) return null
-    val outFmt = DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.ENGLISH)
+                Spacer(modifier = Modifier.height(20.dp))
 
-    runCatching { return OffsetDateTime.parse(value).format(outFmt) }
-    runCatching { return LocalDateTime.parse(value).format(outFmt) }
+                // =========================
+                // 💰 SHARE INFO
+                // =========================
 
-    return value
-}
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
 
-@Composable
-private fun MemberHeaderCard(
-    memberName: String?,
-    email: String?,
-    nid: String?,
-    photoUrl: String?,
-    tokenStore: TokenStore
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            if (!photoUrl.isNullOrBlank()) {
-                MemberCirclePhoto(
-                    photoUrl = photoUrl,
-                    tokenStore = tokenStore,
-                    size = 140.dp
-                )
-            }
+                        Text(
+                            "Share Information",
+                            style = MaterialTheme.typography.titleLarge
+                        )
 
-            Text(
-                text = memberName ?: "-",
-                style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center
-            )
+                        Spacer(modifier = Modifier.height(12.dp))
 
-            Text(
-                text = email ?: "-",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center
-            )
+                        InfoRow("Share No", member.share.toString())
+                        InfoRow("Share Amount", member.shareAmount.toString())
+                        InfoRow("Total Deposit", res.totalDeposited.toString())
+                        InfoRow("Total Due", totalDue ?: "0")
 
-            Text(
-                text = "NID: ${nid ?: "-"}",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
+                        val formattedDate = try {
+                            val parsed = OffsetDateTime.parse(member.createdAt)
+                            parsed.format(
+                                DateTimeFormatter.ofPattern(
+                                    "dd MMMM yyyy",
+                                    Locale.getDefault()
+                                )
+                            )
+                        } catch (e: Exception) {
+                            member.createdAt
+                        }
 
-    Spacer(Modifier.height(12.dp))
-}
-
-@Composable
-private fun InfoCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleLarge)
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
-            content()
-        }
-    }
-}
-
-@Composable
-private fun InfoCardWithPhoto(
-    title: String,
-    photoUrl: String?,
-    photoSize: Dp = 46.dp,
-    tokenStore: TokenStore,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(title, style = MaterialTheme.typography.titleLarge)
-                if (!photoUrl.isNullOrBlank()) {
-                    MemberCirclePhoto(photoUrl, tokenStore, size = photoSize)
+                        InfoRow("Created At", formattedDate)
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // =========================
+                // 👩 NOMINEE INFO
+                // =========================
+
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+
+                        Text(
+                            "Nominee Information",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(member.nomineeImageUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Nominee Image",
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(CircleShape)
+                                .align(Alignment.CenterHorizontally)
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        InfoRow("Name", member.nomineeName ?: "")
+                        InfoRow("NID", member.nomineeNid ?: "")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
             }
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
-            content()
         }
     }
 }
 
 @Composable
-private fun InfoRow(label: String, value: String?) {
+private fun InfoRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -240,38 +234,6 @@ private fun InfoRow(label: String, value: String?) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge)
-        Text(value ?: "-", style = MaterialTheme.typography.bodyLarge)
+        Text(value, style = MaterialTheme.typography.bodyLarge)
     }
-}
-
-@Composable
-private fun MemberCirclePhoto(
-    photoUrl: String,
-    tokenStore: TokenStore,
-    size: Dp = 46.dp
-) {
-    val context = LocalContext.current
-    val token = remember { tokenStore.getTokenSync() }
-
-    val absUrl = remember(photoUrl) { NetworkModule.absoluteUrl(photoUrl) ?: photoUrl }
-
-    val request = remember(absUrl, token) {
-        ImageRequest.Builder(context)
-            .data(absUrl)
-            .apply {
-                if (!token.isNullOrBlank()) {
-                    addHeader("Authorization", "Bearer $token")
-                }
-            }
-            .crossfade(true)
-            .build()
-    }
-
-    AsyncImage(
-        model = request,
-        contentDescription = "photo",
-        modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-    )
 }
