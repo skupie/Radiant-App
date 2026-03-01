@@ -3,6 +3,8 @@ package com.radiant.sms.network
 import android.content.Context
 import com.radiant.sms.AppConfig
 import com.radiant.sms.data.TokenStore
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -12,6 +14,7 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 object NetworkModule {
 
     fun createApiService(tokenProvider: () -> String?): ApiService {
+
         val logger = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
@@ -38,10 +41,17 @@ object NetworkModule {
             .addInterceptor(logger)
             .build()
 
+        /**
+         * ✅ FIX: Proper Moshi setup for Kotlin data classes
+         */
+        val moshi = Moshi.Builder()
+            .add(KotlinJsonAdapterFactory())
+            .build()
+
         return Retrofit.Builder()
             .baseUrl(AppConfig.BASE_URL)
             .client(client)
-            .addConverterFactory(MoshiConverterFactory.create())
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(ApiService::class.java)
     }
