@@ -51,7 +51,8 @@ fun MemberShareDetailsScreen(nav: NavController) {
                 response = api.getMemberShareDetails() // as in your latest project
                 // Try due summary (won't crash now after Models.kt fix)
                 try {
-                    val dueRes = api.getMemberDueSummary(currentYear.toString())
+                    // ✅ FIX: Api expects Int? not String
+                    val dueRes = api.getMemberDueSummary(currentYear)
                     totalDue = dueRes.summary.total.toString()
                 } catch (_: Exception) {
                     // ignore due summary errors, don't break UI
@@ -71,7 +72,7 @@ fun MemberShareDetailsScreen(nav: NavController) {
     val memberName = response?.member?.displayName ?: "Member"
 
     ScreenScaffold(
-        title = memberName,
+        title = "Member Name",
         nav = nav,
         showBack = true,
         centerTitle = true
@@ -128,7 +129,7 @@ fun MemberShareDetailsScreen(nav: NavController) {
                 InfoCardWithPhoto(
                     title = "Nominee Information",
                     photoUrl = nominee?.displayPhotoUrl,
-                    photoSize = 72.dp,
+                    photoSize = 96.dp,
                     tokenStore = tokenStore
                 ) {
                     InfoRow("Name", nominee?.name)
@@ -183,7 +184,7 @@ private fun MemberHeaderCard(
                 MemberCirclePhoto(
                     photoUrl = photoUrl,
                     tokenStore = tokenStore,
-                    size = 120.dp
+                    size = 140.dp
                 )
             }
 
