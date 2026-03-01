@@ -114,15 +114,9 @@ fun MemberShareDetailsScreen(nav: NavController) {
                             modifier = Modifier
                                 .size(160.dp)
                                 .clip(CircleShape)
+                                .align(Alignment.CenterHorizontally)
                         )
 
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Member Name",
-                            style = MaterialTheme.typography.titleMedium,
-                            textAlign = TextAlign.Center
-                        )
 
                         Spacer(modifier = Modifier.height(10.dp))
 
