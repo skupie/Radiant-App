@@ -1,81 +1,87 @@
 package com.radiant.sms.ui.screens.member
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.radiant.sms.data.Repository
-import com.radiant.sms.network.MemberLedgerResponse
 import com.radiant.sms.network.NetworkModule
+import com.radiant.sms.network.MemberLedgerResponse
 import kotlinx.coroutines.launch
-import java.util.Calendar
+import java.time.LocalDate
 
 @Composable
-fun MemberLedgerScreen(navController: NavController) {
+fun MemberLedgerScreen(nav: NavController) {
     val context = LocalContext.current
     val api = remember { NetworkModule.api(context) }
-    val repo = remember { Repository(api) }
-    val scope = rememberCoroutineScope()
 
-    val calendar = remember { Calendar.getInstance() }
-    var selectedYear by remember { mutableIntStateOf(calendar.get(Calendar.YEAR)) }
-
-    var loading by remember { mutableStateOf(false) }
+    var response by remember { mutableStateOf<MemberLedgerResponse?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var data by remember { mutableStateOf<MemberLedgerResponse?>(null) }
+
+    val scope = rememberCoroutineScope()
+    var year by remember { mutableStateOf(LocalDate.now().year) }
 
     fun load() {
         scope.launch {
-            loading = true
+            isLoading = true
             error = null
             try {
-                data = repo.memberLedger(year = selectedYear)
+                response = api.getMemberLedger(year)
             } catch (e: Exception) {
-                error = e.message ?: "Unknown error"
+                error = e.message ?: "Failed to load ledger"
             } finally {
-                loading = false
+                isLoading = false
             }
         }
     }
 
-    LaunchedEffect(selectedYear) { load() }
+    LaunchedEffect(year) { load() }
 
-    ScreenScaffold(
-        nav = navController,
-        title = "",
-        hideTitle = true,
-        showHamburger = true,
-        showBack = false
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OutlinedTextField(
-                value = selectedYear.toString(),
-                onValueChange = { it.toIntOrNull()?.let { y -> selectedYear = y } },
-                label = { Text("Year") },
-                modifier = Modifier.fillMaxWidth()
-            )
+    ScreenScaffold(nav = nav) {
 
-            Button(onClick = { load() }, enabled = !loading) {
-                Text(if (loading) "Loading..." else "Reload")
-            }
-
-            if (loading) {
+        if (isLoading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
-                return@Column
             }
+            return@ScreenScaffold
+        }
 
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
             if (error != null) {
-                Text("Error: ${error!!}", color = MaterialTheme.colorScheme.error)
-                return@Column
+                Text(error ?: "", color = MaterialTheme.colorScheme.error)
+                Spacer(Modifier.height(12.dp))
             }
 
-            Text(data?.toString() ?: "No data yet.")
+            response?.let { ledger ->
+                Text("Year: ${ledger.year}", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(8.dp))
+
+                Text("Year Total: ${ledger.yearTotal}")
+                Text("Lifetime Total: ${ledger.lifetimeTotal}")
+                Text("Total Due: ${ledger.dueSummary.total}")
+
+                Spacer(Modifier.height(16.dp))
+                Text("Entries:", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+
+                ledger.monthlyData.forEach { month ->
+                    Text("${month.label} - Total: ${month.total}", style = MaterialTheme.typography.bodyLarge)
+                    month.entries.forEach { entry ->
+                        Text("• ${entry.type} - ${entry.totalAmount} (${entry.depositedAtLocal})")
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
         }
     }
 }
