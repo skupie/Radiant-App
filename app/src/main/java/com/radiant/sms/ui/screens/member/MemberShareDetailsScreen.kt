@@ -62,8 +62,8 @@ fun MemberShareDetailsScreen(nav: NavController) {
         }
 
         val member = data?.member
-        val share = data?.share
-        val nominee = data?.nominee
+        val share = data?.resolvedShare
+        val nominee = data?.resolvedNominee
 
         Button(
             onClick = { load() },
@@ -74,7 +74,7 @@ fun MemberShareDetailsScreen(nav: NavController) {
 
         InfoCardWithPhoto(
             title = "Member Information",
-            photoUrl = member?.displayPhotoUrl,
+            photoUrl = NetworkModule.absoluteUrl(member?.displayPhotoUrl),
             tokenStore = tokenStore
         ) {
             InfoRow("Name", member?.displayName)
@@ -92,7 +92,7 @@ fun MemberShareDetailsScreen(nav: NavController) {
 
         InfoCardWithPhoto(
             title = "Nominee Information",
-            photoUrl = nominee?.displayPhotoUrl,
+            photoUrl = NetworkModule.absoluteUrl(nominee?.displayPhotoUrl),
             tokenStore = tokenStore
         ) {
             InfoRow("Name", nominee?.name)
@@ -169,18 +169,14 @@ private fun MemberCirclePhoto(
     tokenStore: TokenStore
 ) {
     val context = LocalContext.current
-
-    // ✅ Correct TokenStore API
     val token = remember { tokenStore.getTokenSync() }
 
-    // ✅ Explicit type prevents type inference issues
     val model: ImageRequest? = remember(photoUrl, token) {
         if (photoUrl.isNullOrBlank()) null
         else {
             ImageRequest.Builder(context)
                 .data(photoUrl)
                 .apply {
-                    // If your photo endpoint is protected, send auth header
                     if (!token.isNullOrBlank()) {
                         addHeader("Authorization", "Bearer $token")
                     }
