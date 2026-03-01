@@ -107,7 +107,7 @@ fun MemberShareDetailsScreen(nav: NavController) {
                             .padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-
+                        Spacer(modifier = Modifier.height(10.dp))
                         // ✅ FIX: Always show something (placeholder if URL null/fails)
                         ProfileImage(
                             url = member?.displayPhotoUrl,
@@ -202,6 +202,7 @@ fun MemberShareDetailsScreen(nav: NavController) {
                             url = nominee?.displayPhotoUrl,
                             size = 150.dp,
                             contentDescription = "Nominee Image"
+                            horizontalAlignment = Alignment.CenterHorizontally
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
