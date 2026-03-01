@@ -13,6 +13,7 @@ fun ScreenScaffold(
     title: String,
     nav: NavController,
     showBack: Boolean = true,
+    centerTitle: Boolean = false,
     content: @Composable () -> Unit
 ) {
     Column(
@@ -20,21 +21,43 @@ fun ScreenScaffold(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (showBack) {
-                OutlinedButton(onClick = { nav.popBackStack() }) {
-                    Text("Back")
+        if (centerTitle) {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                if (showBack) {
+                    OutlinedButton(
+                        modifier = Modifier.align(Alignment.CenterStart),
+                        onClick = { nav.popBackStack() }
+                    ) {
+                        Text("Back")
+                    }
                 }
-                Spacer(Modifier.width(12.dp))
-            }
 
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall
-            )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(horizontal = 56.dp)
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (showBack) {
+                    OutlinedButton(onClick = { nav.popBackStack() }) {
+                        Text("Back")
+                    }
+                    Spacer(Modifier.width(12.dp))
+                }
+
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            }
         }
 
         Spacer(Modifier.height(16.dp))
