@@ -1,56 +1,45 @@
 package com.radiant.sms.data
 
-import com.radiant.sms.network.*
+import com.radiant.sms.network.ApiService
+import com.radiant.sms.network.LoginRequest
+import com.radiant.sms.network.LoginResponse
+import com.radiant.sms.network.MemberDueSummaryResponse
+import com.radiant.sms.network.MemberLedgerResponse
+import com.radiant.sms.network.MemberProfileResponse
+import com.radiant.sms.network.MemberShareDetailsResponse
+import com.radiant.sms.network.MembersResponse
+import retrofit2.Response
 
 class Repository(private val api: ApiService) {
 
-    // ---------------- AUTH ----------------
+    suspend fun login(request: LoginRequest): Response<LoginResponse> =
+        api.login(request)
 
-    suspend fun login(email: String, password: String): LoginResponse {
-        return api.login(
-            LoginRequest(
-                email = email,
-                password = password,
-                device_name = "android"
-            )
-        )
-    }
+    suspend fun members(): Response<MembersResponse> =
+        api.members()
 
-    suspend fun me(): MeResponse = api.me()
+    suspend fun memberProfile(memberId: Int): Response<MemberProfileResponse> =
+        api.memberProfile(memberId)
 
-    suspend fun logout(): MessageResponse = api.logout()
+    suspend fun memberLedger(memberId: Int, year: Int, month: Int): Response<MemberLedgerResponse> =
+        api.memberLedger(memberId, year, month)
 
+    suspend fun memberDueSummary(memberId: Int, year: Int): Response<MemberDueSummaryResponse> =
+        api.memberDueSummary(memberId, year)
 
-    // ---------------- MEMBER ----------------
+    suspend fun memberShareDetails(memberId: Int): Response<MemberShareDetailsResponse> =
+        api.memberShareDetails(memberId)
 
-    suspend fun memberProfile(): MemberProfileResponse {
-        return api.getMemberProfile()
-    }
+    // ✅ RESTORED aliases (your screens are calling these)
+    suspend fun getMemberLedger(memberId: Int, year: Int, month: Int) =
+        memberLedger(memberId, year, month)
 
-    suspend fun memberLedger(year: Int?): MemberLedgerResponse {
-        return api.getMemberLedger(year)
-    }
+    suspend fun getMemberDueSummary(memberId: Int, year: Int) =
+        memberDueSummary(memberId, year)
 
-    suspend fun memberDueSummary(year: Int?): MemberDueSummaryResponse {
-        return api.getMemberDueSummary(year)
-    }
+    suspend fun getMemberProfile(memberId: Int) =
+        memberProfile(memberId)
 
-    suspend fun memberShareDetails(): MemberShareDetailsResponse {
-        return api.getMemberShareDetails()
-    }
-
-
-    // ---------------- ADMIN ----------------
-
-    suspend fun adminMembers(search: String?, perPage: Int?): AnyJson {
-        return api.adminMembers(search, perPage)
-    }
-
-    suspend fun adminDeposits(search: String?, perPage: Int?): AnyJson {
-        return api.adminDeposits(search, perPage)
-    }
-
-    suspend fun adminDueSummary(search: String?, perPage: Int?): AnyJson {
-        return api.adminDueSummary(search, perPage)
-    }
+    suspend fun getMemberShareDetails(memberId: Int) =
+        memberShareDetails(memberId)
 }
