@@ -39,8 +39,7 @@ fun MemberProfileScreen(nav: NavController) {
         nav = nav,
         title = "",
         hideTitle = true,
-        showHamburger = true,
-        showBack = false
+        showHamburger = true
     ) {
         when {
             loading -> CircularProgressIndicator()
