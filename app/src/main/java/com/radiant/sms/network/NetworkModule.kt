@@ -3,15 +3,17 @@ package com.radiant.sms.network
 import android.content.Context
 import com.radiant.sms.AppConfig
 import com.radiant.sms.data.TokenStore
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.converter.moshi.MoshiConverterFactory
 
 object NetworkModule {
 
     /**
-     * ✅ Restored: createApiService(tokenProvider)
+     * createApiService(tokenProvider)
      * tokenProvider returns the latest token (or null) whenever a request is made.
      */
     fun createApiService(tokenProvider: () -> String?): ApiService {
@@ -30,10 +32,14 @@ object NetworkModule {
             .addInterceptor(authInterceptor)
             .build()
 
+        val moshi = Moshi.Builder()
+            .addLast(KotlinJsonAdapterFactory())
+            .build()
+
         return Retrofit.Builder()
             .baseUrl(AppConfig.BASE_URL)
             .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(ApiService::class.java)
     }
