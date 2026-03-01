@@ -18,7 +18,6 @@ fun MemberDueSummaryScreen(navController: NavController) {
     val context = LocalContext.current
     val api = remember { NetworkModule.api(context) }
     val repo = remember { Repository(api) }
-
     val scope = rememberCoroutineScope()
 
     val calendar = remember { Calendar.getInstance() }
@@ -44,10 +43,17 @@ fun MemberDueSummaryScreen(navController: NavController) {
 
     LaunchedEffect(selectedYear) { load() }
 
-    ScreenScaffold(title = "Due Summary", nav = navController) {
-
-        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-
+    ScreenScaffold(
+        nav = navController,
+        title = "",
+        hideTitle = true,
+        showHamburger = true,
+        showBack = false
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             OutlinedTextField(
                 value = selectedYear.toString(),
                 onValueChange = { it.toIntOrNull()?.let { y -> selectedYear = y } },
