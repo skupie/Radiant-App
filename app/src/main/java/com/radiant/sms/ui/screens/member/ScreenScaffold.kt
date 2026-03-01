@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.Info
@@ -25,9 +26,7 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDrawelaunch
-import androidx.compose.foundation.layout.width
-import androidx.compose.ui.unit.dp
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -73,8 +72,10 @@ fun ScreenScaffold(
         drawerState = drawerState,
         gesturesEnabled = showHamburger,
         drawerContent = {
-            ModalDrawerSheet {
-                Spacer(modifier = Modifier.width(280.dp))
+            ModalDrawerSheet(
+                modifier = Modifier.width(280.dp) // ✅ sidebar width
+            ) {
+                Spacer(modifier = Modifier.height(12.dp))
 
                 NavigationDrawerItem(
                     label = { Text("Ledger") },
@@ -147,9 +148,7 @@ fun ScreenScaffold(
                     title = { if (!hideTitle) Text(title) },
                     navigationIcon = {
                         if (showHamburger) {
-                            IconButton(
-                                onClick = { scope.launch { drawerState.open() } }
-                            ) {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
                                 Icon(Icons.Default.Menu, contentDescription = "Menu")
                             }
                         }
