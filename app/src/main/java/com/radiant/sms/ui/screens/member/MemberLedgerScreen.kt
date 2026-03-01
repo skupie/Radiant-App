@@ -11,37 +11,37 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.network.NetworkModule
-import com.radiant.sms.network.MemberLedgerResponse
+import com.radiant.sms.network.MemberDueSummaryResponse
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 @Composable
-fun MemberLedgerScreen(nav: NavController) {
+fun MemberDueSummaryScreen(nav: NavController) {
     val context = LocalContext.current
     val api = remember { NetworkModule.api(context) }
 
-    var response by remember { mutableStateOf<MemberLedgerResponse?>(null) }
+    var response by remember { mutableStateOf<MemberDueSummaryResponse?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
-    var year by remember { mutableStateOf(LocalDate.now().year) }
+    val year = remember { LocalDate.now().year }
 
     fun load() {
         scope.launch {
             isLoading = true
             error = null
             try {
-                response = api.getMemberLedger(year)
+                response = api.getMemberDueSummary(year)
             } catch (e: Exception) {
-                error = e.message ?: "Failed to load ledger"
+                error = e.message ?: "Failed to load due summary"
             } finally {
                 isLoading = false
             }
         }
     }
 
-    LaunchedEffect(year) { load() }
+    LaunchedEffect(Unit) { load() }
 
     ScreenScaffold(nav = nav) {
 
@@ -62,24 +62,18 @@ fun MemberLedgerScreen(nav: NavController) {
                 Spacer(Modifier.height(12.dp))
             }
 
-            response?.let { ledger ->
-                Text("Year: ${ledger.year}", style = MaterialTheme.typography.titleLarge)
+            response?.let { due ->
+                Text("Year: $year", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(8.dp))
 
-                Text("Year Total: ${ledger.yearTotal}")
-                Text("Lifetime Total: ${ledger.lifetimeTotal}")
-                Text("Total Due: ${ledger.dueSummary.total}")
-
+                Text("Total Due: ${due.summary.total}", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(16.dp))
-                Text("Entries:", style = MaterialTheme.typography.titleMedium)
+
+                Text("Monthly Due:", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))
 
-                ledger.monthlyData.forEach { month ->
-                    Text("${month.label} - Total: ${month.total}", style = MaterialTheme.typography.bodyLarge)
-                    month.entries.forEach { entry ->
-                        Text("• ${entry.type} - ${entry.totalAmount} (${entry.depositedAtLocal})")
-                    }
-                    Spacer(Modifier.height(12.dp))
+                due.summary.months.forEach { m ->
+                    Text("• ${m.year}-${m.month}: ${m.amount}")
                 }
             }
         }
