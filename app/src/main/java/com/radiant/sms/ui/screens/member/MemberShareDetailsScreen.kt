@@ -35,6 +35,7 @@ fun MemberShareDetailsScreen(nav: NavController) {
     var error by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
+
     val currentYear = remember { java.time.LocalDate.now().year }
 
     fun load() {
@@ -45,12 +46,10 @@ fun MemberShareDetailsScreen(nav: NavController) {
                 val res = api.getMemberShareDetails()
                 response = res
 
-                // Load due summary safely
                 runCatching {
                     val dueRes = api.getMemberDueSummary(currentYear)
                     totalDue = dueRes.summary.total.toString()
                 }
-
             } catch (e: Exception) {
                 error = e.message ?: "Failed to load share details"
             } finally {
@@ -61,7 +60,6 @@ fun MemberShareDetailsScreen(nav: NavController) {
 
     LaunchedEffect(Unit) { load() }
 
-    // ✅ New Scaffold (no padding lambda)
     ScreenScaffold(nav = nav) {
 
         if (isLoading) {
@@ -91,11 +89,12 @@ fun MemberShareDetailsScreen(nav: NavController) {
             response?.let { res ->
 
                 val member = res.member
+                val share = res.resolvedShare
+                val nominee = res.resolvedNominee
 
                 // =========================
                 // 👤 MEMBER CARD
                 // =========================
-
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -108,19 +107,27 @@ fun MemberShareDetailsScreen(nav: NavController) {
 
                         AsyncImage(
                             model = ImageRequest.Builder(context)
-                                .data(member.imageUrl)
+                                .data(member?.displayPhotoUrl)
                                 .crossfade(true)
                                 .build(),
                             contentDescription = "Member Image",
                             modifier = Modifier
-                                .size(140.dp)
+                                .size(160.dp)
                                 .clip(CircleShape)
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = member.displayName ?: "",
+                            text = "Member Name",
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = member?.displayName ?: "",
                             style = MaterialTheme.typography.titleLarge,
                             textAlign = TextAlign.Center
                         )
@@ -128,7 +135,7 @@ fun MemberShareDetailsScreen(nav: NavController) {
                         Spacer(modifier = Modifier.height(6.dp))
 
                         Text(
-                            text = member.email ?: "",
+                            text = member?.email ?: "",
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center
                         )
@@ -136,23 +143,28 @@ fun MemberShareDetailsScreen(nav: NavController) {
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "NID: ${member.displayNid}",
+                            text = member?.displayNid ?: "",
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center
                         )
+
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
                 // =========================
-                // 💰 SHARE INFO
+                // 📌 SHARE INFO
                 // =========================
-
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
 
                         Text(
                             "Share Information",
@@ -161,37 +173,41 @@ fun MemberShareDetailsScreen(nav: NavController) {
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        InfoRow("Share No", member.share.toString())
-                        InfoRow("Share Amount", member.shareAmount.toString())
-                        InfoRow("Total Deposit", res.totalDeposited.toString())
-                        InfoRow("Total Due", totalDue ?: "0")
+                        InfoRow("Share No", share?.displayShareNo ?: "-")
+                        InfoRow("Share Amount", share?.displayShareAmount ?: "-")
+                        InfoRow("Total Deposit", share?.displayTotalDeposit ?: "-")
+                        InfoRow("Total Due", totalDue ?: "-")
 
-                        val formattedDate = try {
-                            val parsed = OffsetDateTime.parse(member.createdAt)
-                            parsed.format(
-                                DateTimeFormatter.ofPattern(
-                                    "dd MMMM yyyy",
-                                    Locale.getDefault()
-                                )
-                            )
-                        } catch (e: Exception) {
-                            member.createdAt
+                        val createdAt = share?.displayCreatedAt
+                        if (!createdAt.isNullOrBlank()) {
+                            val formatted = runCatching {
+                                OffsetDateTime.parse(createdAt)
+                                    .format(
+                                        DateTimeFormatter.ofPattern(
+                                            "dd MMM yyyy",
+                                            Locale.ENGLISH
+                                        )
+                                    )
+                            }.getOrDefault(createdAt)
+
+                            InfoRow("Created At", formatted)
                         }
-
-                        InfoRow("Created At", formattedDate)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
                 // =========================
-                // 👩 NOMINEE INFO
+                // 👥 NOMINEE INFO
                 // =========================
-
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
 
                         Text(
                             "Nominee Information",
@@ -202,20 +218,20 @@ fun MemberShareDetailsScreen(nav: NavController) {
 
                         AsyncImage(
                             model = ImageRequest.Builder(context)
-                                .data(member.nomineeImageUrl)
+                                .data(nominee?.displayPhotoUrl)
                                 .crossfade(true)
                                 .build(),
                             contentDescription = "Nominee Image",
                             modifier = Modifier
-                                .size(120.dp)
+                                .size(150.dp)
                                 .clip(CircleShape)
                                 .align(Alignment.CenterHorizontally)
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        InfoRow("Name", member.nomineeName ?: "")
-                        InfoRow("NID", member.nomineeNid ?: "")
+                        InfoRow("Name", nominee?.displayName ?: "")
+                        InfoRow("NID", nominee?.displayNid ?: "")
                     }
                 }
 
@@ -228,12 +244,10 @@ fun MemberShareDetailsScreen(nav: NavController) {
 @Composable
 private fun InfoRow(label: String, value: String) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
-        Text(value, style = MaterialTheme.typography.bodyLarge)
+        Text(text = label, style = MaterialTheme.typography.bodyMedium)
+        Text(text = value, style = MaterialTheme.typography.bodyMedium)
     }
 }
