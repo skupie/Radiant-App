@@ -47,8 +47,7 @@ fun MemberDueSummaryScreen(navController: NavController) {
         nav = navController,
         title = "",
         hideTitle = true,
-        showHamburger = true,
-        showBack = false
+        showHamburger = true
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
