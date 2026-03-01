@@ -82,7 +82,7 @@ data class MemberInfo(
     @Json(name = "member_id") val memberIdSnake: String? = null,
     @Json(name = "id") val id: String? = null,
 
-    // ✅ NID variants (show Member NID instead of Member ID)
+    // ✅ NID variants
     @Json(name = "nid") val nid: String? = null,
     @Json(name = "national_id") val nationalId: String? = null,
     @Json(name = "member_nid") val memberNid: String? = null,
@@ -106,8 +106,11 @@ data class MemberInfo(
     val displayNid: String?
         get() = nid ?: nationalId ?: memberNid
 
+    /**
+     * ✅ FIX: Convert relative path -> absolute URL
+     */
     val displayPhotoUrl: String?
-        get() = profilePhotoUrl ?: profilePhoto ?: avatar ?: image ?: photo
+        get() = NetworkModule.absoluteUrl(profilePhotoUrl ?: profilePhoto ?: avatar ?: image ?: photo)
 }
 
 @JsonClass(generateAdapter = true)
@@ -163,10 +166,12 @@ data class NomineeInfo(
     val displayPhone: String?
         get() = phone ?: mobileNumber
 
-    // ✅ REQUIRED: fixes build error in MemberShareDetailsScreen.kt (nominee?.displayNid)
     val displayNid: String?
         get() = nid
 
+    /**
+     * ✅ FIX: Convert relative path -> absolute URL
+     */
     val displayPhotoUrl: String?
-        get() = profilePhotoUrl ?: profilePhoto ?: avatar ?: image ?: photo
+        get() = NetworkModule.absoluteUrl(profilePhotoUrl ?: profilePhoto ?: avatar ?: image ?: photo)
 }
