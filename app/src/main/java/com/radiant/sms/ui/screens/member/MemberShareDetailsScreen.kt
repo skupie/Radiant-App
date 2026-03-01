@@ -19,6 +19,7 @@ import coil.request.ImageRequest
 import com.radiant.sms.data.TokenStore
 import com.radiant.sms.network.NetworkModule
 import com.radiant.sms.network.MemberShareDetailsResponse
+import com.radiant.sms.ui.components.ScreenScaffold
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
@@ -31,13 +32,10 @@ fun MemberShareDetailsScreen(nav: NavController) {
     val tokenStore = remember { TokenStore(context) }
     val api = remember { NetworkModule.api(context) }
 
-    val memberId = nav.currentBackStackEntry?.arguments?.getString("memberId") ?: ""
-
     var response by remember { mutableStateOf<MemberShareDetailsResponse?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    // NEW: fetch due summary for current year (optional)
     var totalDue by remember { mutableStateOf<String?>(null) }
     val currentYear = remember { java.time.LocalDate.now().year }
 
@@ -48,14 +46,12 @@ fun MemberShareDetailsScreen(nav: NavController) {
             isLoading = true
             error = null
             try {
-                response = api.getMemberShareDetails() // as in your latest project
-                // Try due summary (won't crash now after Models.kt fix)
-                try {
-                    // ✅ FIX: Api expects Int? not String
-                    val dueRes = api.getMemberDueSummary(currentYear)
+                response = api.getMemberShareDetails()
+
+                // Due Summary (safe)
+                runCatching {
+                    val dueRes = api.getMemberDueSummary(currentYear) // Int? expected
                     totalDue = dueRes.summary.total.toString()
-                } catch (_: Exception) {
-                    // ignore due summary errors, don't break UI
                 }
             } catch (e: Exception) {
                 error = e.message ?: "Failed to load share details"
@@ -65,45 +61,48 @@ fun MemberShareDetailsScreen(nav: NavController) {
         }
     }
 
-    LaunchedEffect(Unit) {
-        load()
-    }
-
-    val memberName = response?.member?.displayName ?: "Member"
+    LaunchedEffect(Unit) { load() }
 
     ScreenScaffold(
-        title = "Member Name",
+        title = "",
         nav = nav,
-        showBack = true,
-        centerTitle = true
-    ) {
+        showBack = false,
+        showHamburger = true,
+        hideTitle = true
+    ) { padding ->
+
         if (isLoading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator()
             }
             return@ScreenScaffold
         }
 
-        if (error != null) {
-            Text(
-                text = error ?: "",
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(Modifier.height(12.dp))
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
+            if (error != null) {
+                Text(
+                    text = error ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(Modifier.height(12.dp))
+            }
+
             response?.let { res ->
                 val member = res.member
                 val share = res.share
                 val nominee = res.nominee
 
-                // MEMBER (Photo + Name + Email + NID)
                 MemberHeaderCard(
                     memberName = member?.displayName,
                     email = member?.email,
@@ -112,10 +111,7 @@ fun MemberShareDetailsScreen(nav: NavController) {
                     tokenStore = tokenStore
                 )
 
-                // SHARE INFO
-                InfoCard(
-                    title = "Share Information"
-                ) {
+                InfoCard(title = "Share Information") {
                     InfoRow("Share No", share?.displayShareNo)
                     InfoRow("Share Amount", share?.displayShareAmount)
                     InfoRow("Total Deposit", share?.displayTotalDeposit)
@@ -125,7 +121,6 @@ fun MemberShareDetailsScreen(nav: NavController) {
 
                 Spacer(Modifier.height(12.dp))
 
-                // NOMINEE INFORMATION (Bigger image)
                 InfoCardWithPhoto(
                     title = "Nominee Information",
                     photoUrl = nominee?.displayPhotoUrl,
@@ -142,22 +137,11 @@ fun MemberShareDetailsScreen(nav: NavController) {
 
 private fun formatIsoDate(value: String?): String? {
     if (value.isNullOrBlank()) return null
-
     val outFmt = DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.ENGLISH)
 
-    // Try OffsetDateTime first (e.g. 2025-10-20T12:34:56+06:00)
-    runCatching {
-        val odt = OffsetDateTime.parse(value)
-        return odt.format(outFmt)
-    }
+    runCatching { return OffsetDateTime.parse(value).format(outFmt) }
+    runCatching { return LocalDateTime.parse(value).format(outFmt) }
 
-    // Try LocalDateTime (e.g. 2025-10-20T12:34:56)
-    runCatching {
-        val ldt = LocalDateTime.parse(value)
-        return ldt.format(outFmt)
-    }
-
-    // Try already formatted date or return as-is
     return value
 }
 
@@ -276,7 +260,6 @@ private fun MemberCirclePhoto(
     val context = LocalContext.current
     val token = remember { tokenStore.getTokenSync() }
 
-    // ✅ Fix: convert relative path to absolute URL so image shows
     val absUrl = remember(photoUrl) { NetworkModule.absoluteUrl(photoUrl) ?: photoUrl }
 
     val request = remember(absUrl, token) {
