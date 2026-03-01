@@ -1,11 +1,8 @@
 package com.radiant.sms.ui.screens.member
 
-import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.Repository
 import com.radiant.sms.network.NetworkModule
@@ -19,10 +16,8 @@ fun MemberProfileScreen(nav: NavController) {
     var error by remember { mutableStateOf<String?>(null) }
     var raw by remember { mutableStateOf("No data") }
 
-    // ✅ Use the authenticated API service
     val api = remember { NetworkModule.api(context) }
     val repo = remember { Repository(api) }
-
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -40,7 +35,13 @@ fun MemberProfileScreen(nav: NavController) {
         }
     }
 
-    ScreenScaffold(title = "Profile", nav = nav) {
+    ScreenScaffold(
+        nav = nav,
+        title = "",
+        hideTitle = true,
+        showHamburger = true,
+        showBack = false
+    ) {
         when {
             loading -> CircularProgressIndicator()
             error != null -> Text("Error: ${error!!}", color = MaterialTheme.colorScheme.error)
