@@ -24,7 +24,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val tokenStore = TokenStore(app.applicationContext)
 
-    private val api = NetworkModule.createApiService(context)
+    private val api = NetworkModule.createApiService {
+        tokenStore.getTokenSync()
+    }
 
     private val repo = Repository(api)
 
@@ -42,7 +44,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
     }
-    
 
     fun login(email: String, password: String) {
         viewModelScope.launch {
