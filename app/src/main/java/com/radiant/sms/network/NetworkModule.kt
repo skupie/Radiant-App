@@ -1,62 +1,40 @@
 package com.radiant.sms.network
 
-import android.content.Context
-import com.radiant.sms.data.TokenStore
-import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
-import okhttp3.Interceptor
+import com.radiant.sms.BuildConfig
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.util.concurrent.TimeUnit
 
 object NetworkModule {
 
-    const val BASE_URL = "https://basic.bd-d.online/"
-
-    private fun authInterceptor(context: Context): Interceptor = Interceptor { chain ->
-        val token = TokenStore(context).getTokenSync()
-        val req = if (token.isNullOrBlank()) {
-            chain.request()
-        } else {
-            chain.request().newBuilder()
-                .addHeader("Authorization", "Bearer $token")
-                .build()
-        }
-        chain.proceed(req)
-    }
-
-    private val moshi: Moshi = Moshi.Builder()
-        .add(KotlinJsonAdapterFactory())
-        .build()
-
-    fun api(context: Context): ApiService {
-        val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
-        }
-
+    /**
+     * Creates an ApiService where Authorization header is injected dynamically
+     * from the provided tokenProvider lambda.
+     */
+    fun createApiService(tokenProvider: () -> String?): ApiService {
         val client = OkHttpClient.Builder()
-            .addInterceptor(authInterceptor(context))
-            .addInterceptor(logging)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .addInterceptor { chain ->
+                val token = tokenProvider()?.trim()
+
+                val request = chain.request().newBuilder().apply {
+                    if (!token.isNullOrBlank()) {
+                        addHeader("Authorization", "Bearer $token")
+                    }
+                }.build()
+
+                chain.proceed(request)
+            }
             .build()
 
         val retrofit = Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(BuildConfig.BASE_URL)
             .client(client)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .addConverterFactory(MoshiConverterFactory.create())
             .build()
 
         return retrofit.create(ApiService::class.java)
     }
-
-    fun absoluteUrl(path: String?): String? {
-        if (path.isNullOrBlank()) return null
-        val p = path.trim()
-        if (p.startsWith("http://") || p.startsWith("https://")) return p
-        val normalized = if (p.startsWith("/")) p.drop(1) else p
-        return BASE_URL + normalized
-    }
-
-    // ✅ Backwards compatible wrapper for older code
-    fun createApiService(context: Context): ApiService = api(context)
 }
