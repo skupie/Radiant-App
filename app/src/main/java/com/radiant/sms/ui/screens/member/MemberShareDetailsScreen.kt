@@ -61,9 +61,12 @@ fun MemberShareDetailsScreen(nav: NavController) {
             return@ScreenScaffold
         }
 
-        val member = data?.member
-        val share = data?.resolvedShare
-        val nominee = data?.resolvedNominee
+        // ✅ IMPORTANT: unwrap `data` if server returns { data: {...} }
+        val root = data?.effective
+
+        val member = root?.resolvedMember
+        val share = root?.resolvedShare
+        val nominee = root?.resolvedNominee
 
         Button(
             onClick = { load() },
@@ -171,47 +174,27 @@ private fun MemberCirclePhoto(
     val context = LocalContext.current
     val token = remember { tokenStore.getTokenSync() }
 
-    val model: ImageRequest? = remember(photoUrl, token) {
-        if (photoUrl.isNullOrBlank()) null
-        else {
-            ImageRequest.Builder(context)
-                .data(photoUrl)
-                .apply {
-                    if (!token.isNullOrBlank()) {
-                        addHeader("Authorization", "Bearer $token")
-                    }
-                }
-                .crossfade(true)
-                .build()
-        }
-    }
-
-    if (model == null) {
-        Surface(
+    if (photoUrl.isNullOrBlank()) {
+        Box(
             modifier = Modifier
-                .size(46.dp)
+                .size(44.dp)
                 .clip(CircleShape),
-            color = MaterialTheme.colorScheme.surfaceVariant
-        ) {}
+            contentAlignment = Alignment.Center
+        ) {
+            Text(" ", style = MaterialTheme.typography.bodySmall)
+        }
         return
     }
 
     AsyncImage(
-        model = model,
+        model = ImageRequest.Builder(context)
+            .data(photoUrl)
+            .addHeader("Authorization", "Bearer $token")
+            .crossfade(true)
+            .build(),
         contentDescription = "photo",
         modifier = Modifier
-            .size(46.dp)
+            .size(44.dp)
             .clip(CircleShape)
     )
-}
-
-@Composable
-private fun InfoRow(label: String, value: String?) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label)
-        Text(value ?: "-")
-    }
 }
