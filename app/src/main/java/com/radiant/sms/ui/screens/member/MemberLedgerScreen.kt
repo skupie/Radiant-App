@@ -33,9 +33,8 @@ fun MemberLedgerScreen(nav: NavController) {
 
         scope.launch {
             try {
-                val token = tokenStore.tokenFlow.first()
-                val api = NetworkModule.createApiService { token }
-
+                val context = LocalContext.current
+                val api = NetworkModule.createApiService(context)
                 val res = api.getMemberLedger(year)
                 data = res
             } catch (e: Exception) {
