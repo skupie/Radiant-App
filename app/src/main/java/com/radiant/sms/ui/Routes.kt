@@ -6,8 +6,12 @@ object Routes {
     const val LOGIN = "login"
 
     // MEMBER
+    // (Keep MEMBER_HOME mapped to ledger if you want home to open ledger)
     const val MEMBER_HOME = "member_ledger"
     const val MEMBER_LEDGER = "member_ledger"
+    const val MEMBER_PROFILE = "member_profile"
+    const val MEMBER_DUE_SUMMARY = "member_due_summary"
+    const val MEMBER_SHARE_DETAILS = "member_share_details"
 
     // ADMIN
     const val ADMIN_HOME = "admin_dashboard" // keep this for compatibility
