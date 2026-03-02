@@ -10,6 +10,7 @@ import com.radiant.sms.network.MemberLedgerResponse
 import com.radiant.sms.network.MemberProfileResponse
 import com.radiant.sms.network.MemberShareDetailsResponse
 import com.radiant.sms.network.AnyJson
+import com.radiant.sms.network.ChangePasswordRequest
 
 /**
  * Single source of truth for API calls used by the app.
@@ -33,6 +34,22 @@ class Repository(private val api: ApiService) {
 
     suspend fun logout(): MessageResponse =
         api.logout()
+
+    /**
+     * Change password (member). Some backends expose this under different paths.
+     * We try member endpoint first, then fall back to auth endpoint.
+     */
+    suspend fun changePassword(currentPassword: String, newPassword: String): MessageResponse {
+        val body = ChangePasswordRequest(
+            currentPassword = currentPassword,
+            newPassword = newPassword
+        )
+        return try {
+            api.memberChangePassword(body)
+        } catch (_: Exception) {
+            api.authChangePassword(body)
+        }
+    }
 
     // ---------- MEMBER ----------
     suspend fun memberProfile(): MemberProfileResponse =
