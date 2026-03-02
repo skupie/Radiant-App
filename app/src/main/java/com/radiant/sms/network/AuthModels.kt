@@ -1,6 +1,7 @@
 // app/src/main/java/com/radiant/sms/network/models/AuthModels.kt
 package com.radiant.sms.network
 
+import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 typealias AnyJson = Map<String, Any?>
@@ -34,4 +35,10 @@ data class MeResponse(
 @JsonClass(generateAdapter = true)
 data class MessageResponse(
     val message: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class ChangePasswordRequest(
+    @Json(name = "current_password") val currentPassword: String,
+    @Json(name = "new_password") val newPassword: String
 )
