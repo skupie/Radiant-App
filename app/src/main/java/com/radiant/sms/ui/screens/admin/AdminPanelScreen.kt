@@ -1,5 +1,6 @@
 package com.radiant.sms.ui.screens.admin
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,27 +9,32 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.radiant.sms.data.Repository
 import com.radiant.sms.network.AdminMemberDto
 import com.radiant.sms.network.NetworkModule
 
 @Composable
-fun AdminPanelScreen(modifier: Modifier = Modifier) {
+fun AdminPanelScreen(
+    modifier: Modifier = Modifier,
+    onMemberClick: (Int) -> Unit,
+    onCreateMemberClick: () -> Unit,
+    onExportPdfClick: () -> Unit,
+    onExportExcelClick: () -> Unit
+) {
 
     val context = LocalContext.current
     val api = remember { NetworkModule.api(context) }
     val repo = remember { Repository(api) }
 
-    var search by remember { mutableStateOf("") }
-    var loading by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var members by remember { mutableStateOf<List<AdminMemberDto>>(emptyList()) }
 
     LaunchedEffect(Unit) {
-        loading = true
         try {
-            val res = repo.adminMembers(perPage = 50)
+            val res = repo.adminMembers(perPage = 1000) // Load all
             members = res.data
         } catch (e: Exception) {
             error = e.message
@@ -38,70 +44,82 @@ fun AdminPanelScreen(modifier: Modifier = Modifier) {
     }
 
     Column(
-        modifier = modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp)
     ) {
 
-        Text("Admin Panel", style = MaterialTheme.typography.headlineSmall)
+        // 🔹 Header
+        Text(
+            text = "Admin Dashboard",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
 
+        Spacer(Modifier.height(16.dp))
+
+        // 🔹 Top Action Row
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            OutlinedTextField(
-                value = search,
-                onValueChange = { search = it },
-                modifier = Modifier.weight(1f),
-                label = { Text("Search members") },
-                singleLine = true
-            )
-
             Button(
-                enabled = !loading,
-                onClick = {
-                    loading = true
-                }
+                modifier = Modifier.weight(1f),
+                onClick = onCreateMemberClick
             ) {
-                Text("Search")
+                Text("Create Member")
+            }
+
+            OutlinedButton(
+                modifier = Modifier.weight(1f),
+                onClick = onExportPdfClick
+            ) {
+                Text("PDF")
+            }
+
+            OutlinedButton(
+                modifier = Modifier.weight(1f),
+                onClick = onExportExcelClick
+            ) {
+                Text("Excel")
             }
         }
 
-        LaunchedEffect(loading) {
-            if (!loading) return@LaunchedEffect
-            try {
-                val res = repo.adminMembers(
-                    search = search.takeIf { it.isNotBlank() },
-                    perPage = 50
-                )
-                members = res.data
-            } catch (e: Exception) {
-                error = e.message
-            } finally {
-                loading = false
-            }
-        }
+        Spacer(Modifier.height(20.dp))
 
         when {
             loading -> {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             }
 
             error != null -> {
-                Text(error ?: "", color = MaterialTheme.colorScheme.error)
+                Text(
+                    text = error ?: "",
+                    color = MaterialTheme.colorScheme.error
+                )
             }
 
             else -> {
+
                 Text(
-                    "Members (${members.size})",
+                    text = "Total Members: ${members.size}",
                     style = MaterialTheme.typography.titleMedium
                 )
 
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(members) { m ->
-                        MemberRow(m)
+                Spacer(Modifier.height(12.dp))
+
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(members) { member ->
+                        MemberCard(
+                            member = member,
+                            onClick = {
+                                member.id?.let { onMemberClick(it) }
+                            }
+                        )
                     }
                 }
             }
@@ -110,15 +128,36 @@ fun AdminPanelScreen(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun MemberRow(m: AdminMemberDto) {
-    val name = m.fullName?.takeIf { it.isNotBlank() } ?: "Unnamed member"
-    val email = m.email?.takeIf { it.isNotBlank() } ?: "No email"
-
-    Card(Modifier.fillMaxWidth()) {
+private fun MemberCard(
+    member: AdminMemberDto,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
         Column(Modifier.padding(14.dp)) {
-            Text(name, style = MaterialTheme.typography.titleMedium)
+
+            Text(
+                text = member.fullName ?: "Unnamed Member",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+
             Spacer(Modifier.height(4.dp))
-            Text(email, style = MaterialTheme.typography.bodyMedium)
+
+            Text(
+                text = member.email ?: "",
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            Text(
+                text = "NID: ${member.nid ?: "-"}",
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }
