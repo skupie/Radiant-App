@@ -1,35 +1,14 @@
 package com.radiant.sms.ui.screens.member
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,8 +28,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun MemberProfileScreen(nav: NavController) {
-    val context = LocalContext.current
 
+    val context = LocalContext.current
     val api = remember { NetworkModule.api(context) }
     val repo = remember { Repository(api) }
     val scope = rememberCoroutineScope()
@@ -72,10 +51,8 @@ fun MemberProfileScreen(nav: NavController) {
             isLoading = true
             error = null
             try {
-                val p = repo.memberProfile()
-                val s = repo.memberShareDetails()
-                profile = p
-                shareDetails = s
+                profile = repo.memberProfile()
+                shareDetails = repo.memberShareDetails()
             } catch (e: Exception) {
                 error = e.message ?: "Failed to load profile"
             } finally {
@@ -89,25 +66,19 @@ fun MemberProfileScreen(nav: NavController) {
             error = null
             success = null
 
-            val cur = currentPassword.trim()
-            val newP = newPassword.trim()
-
-            if (cur.isEmpty()) {
+            if (currentPassword.isBlank()) {
                 error = "Current password is required"
                 return@launch
             }
-            if (newP.isEmpty()) {
-                error = "New password is required"
-                return@launch
-            }
-            if (newP.length < 6) {
+
+            if (newPassword.length < 6) {
                 error = "New password must be at least 6 characters"
                 return@launch
             }
 
             isLoading = true
             try {
-                val res = repo.changePassword(currentPassword = cur, newPassword = newP)
+                val res = repo.changePassword(currentPassword.trim(), newPassword.trim())
                 success = res.message ?: "Password changed successfully"
                 currentPassword = ""
                 newPassword = ""
@@ -127,8 +98,9 @@ fun MemberProfileScreen(nav: NavController) {
         hideTitle = true,
         showHamburger = true
     ) {
-        if (isLoading && profile == null && shareDetails == null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+
+        if (isLoading && profile == null) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
             return@ScreenScaffold
@@ -149,28 +121,17 @@ fun MemberProfileScreen(nav: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            Text(
-                text = "Profile",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp)
-            )
-
             if (error != null) {
                 Text(
-                    text = error ?: "",
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.fillMaxWidth()
+                    text = error!!,
+                    color = MaterialTheme.colorScheme.error
                 )
             }
 
             if (success != null) {
                 Text(
-                    text = success ?: "",
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.fillMaxWidth()
+                    text = success!!,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -189,29 +150,12 @@ fun MemberProfileScreen(nav: NavController) {
                     modifier = Modifier
                         .size(120.dp)
                         .clip(CircleShape),
-                    loading = {
-                        Box(
-                            modifier = Modifier
-                                .height(120.dp)
-                                .fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    },
                     error = {
-                        Box(
-                            modifier = Modifier
-                                .height(120.dp)
-                                .fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Person,
-                                contentDescription = null,
-                                modifier = Modifier.height(80.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Filled.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp)
+                        )
                     }
                 )
             }
@@ -219,10 +163,7 @@ fun MemberProfileScreen(nav: NavController) {
             Text(
                 text = displayName,
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
+                fontWeight = FontWeight.SemiBold
             )
 
             ElevatedCard(
@@ -230,11 +171,10 @@ fun MemberProfileScreen(nav: NavController) {
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
+                    modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+
                     Text(
                         text = "Change Password",
                         style = MaterialTheme.typography.titleMedium,
@@ -244,11 +184,12 @@ fun MemberProfileScreen(nav: NavController) {
                     OutlinedTextField(
                         value = currentPassword,
                         onValueChange = { currentPassword = it },
-                        modifier = Modifier.fillMaxWidth(),
                         label = { Text("Current Password") },
-                        singleLine = true,
-                        visualTransformation = if (showCurrent) VisualTransformation.None else PasswordVisualTransformation()
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation =
+                        if (showCurrent) VisualTransformation.None else PasswordVisualTransformation()
                     )
+
                     TextButton(
                         onClick = { showCurrent = !showCurrent },
                         modifier = Modifier.align(Alignment.End)
@@ -259,11 +200,12 @@ fun MemberProfileScreen(nav: NavController) {
                     OutlinedTextField(
                         value = newPassword,
                         onValueChange = { newPassword = it },
-                        modifier = Modifier.fillMaxWidth(),
                         label = { Text("New Password") },
-                        singleLine = true,
-                        visualTransformation = if (showNew) VisualTransformation.None else PasswordVisualTransformation()
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation =
+                        if (showNew) VisualTransformation.None else PasswordVisualTransformation()
                     )
+
                     TextButton(
                         onClick = { showNew = !showNew },
                         modifier = Modifier.align(Alignment.End)
@@ -273,8 +215,7 @@ fun MemberProfileScreen(nav: NavController) {
 
                     Button(
                         onClick = { if (!isLoading) changePassword() },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isLoading
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(if (isLoading) "Please wait..." else "Update Password")
                     }
