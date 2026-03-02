@@ -28,7 +28,6 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
         Text("Dashboard", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(12.dp))
 
-        // Export buttons (PDF/Excel)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
                 modifier = Modifier.weight(1f),
@@ -65,7 +64,6 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
 
         Spacer(Modifier.height(12.dp))
 
-        // Search
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             OutlinedTextField(
                 modifier = Modifier.weight(1f),
@@ -92,7 +90,6 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
             Spacer(Modifier.height(8.dp))
         }
 
-        // Table header
         ElevatedCard(Modifier.fillMaxWidth()) {
             Row(
                 Modifier.fillMaxWidth().padding(12.dp),
