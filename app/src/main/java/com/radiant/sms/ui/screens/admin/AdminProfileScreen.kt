@@ -1,57 +1,101 @@
 package com.radiant.sms.ui.screens.admin
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
-import com.radiant.sms.network.NetworkModule
+import com.radiant.sms.data.NetworkModule
+import com.radiant.sms.network.MeResponse
 
 @Composable
-fun AdminProfileScreen(nav: NavController) {
-    val context = LocalContext.current
-    val api = NetworkModule.api(context)
+fun AdminProfileScreen(
+    modifier: Modifier = Modifier,
+    onLogout: (() -> Unit)? = null
+) {
+    val repo = NetworkModule.repository
 
-    var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var role by remember { mutableStateOf("Admin") }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var me by remember { mutableStateOf<MeResponse?>(null) }
+
+    fun load() {
+        loading = true
+        error = null
+        me = null
+    }
 
     LaunchedEffect(Unit) {
         try {
-            // Assumes your existing ApiService has getMe()
-            val me = api.getMe()
-            name = me.name ?: ""
-            email = me.email ?: ""
-            // If your backend returns role, keep it. Otherwise, this stays "Admin".
-            role = me.role ?: "Admin"
-        } catch (_: Exception) {
-            // keep empty
+            me = repo.me()
+        } catch (e: Exception) {
+            error = e.message ?: "Failed to load profile"
+        } finally {
+            loading = false
         }
     }
 
-    AdminScaffold(nav = nav) {
-        Column(Modifier.padding(16.dp)) {
-            Text("Profile", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(16.dp))
+    // manual reload trigger
+    LaunchedEffect(loading) {
+        if (!loading) return@LaunchedEffect
+        try {
+            me = repo.me()
+        } catch (e: Exception) {
+            error = e.message ?: "Failed to load profile"
+        } finally {
+            loading = false
+        }
+    }
 
-            Text("Name: ${if (name.isBlank()) "-" else name}")
-            Spacer(Modifier.height(8.dp))
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("Admin Profile", style = MaterialTheme.typography.headlineSmall)
 
-            Text("Email: ${if (email.isBlank()) "-" else email}")
-            Spacer(Modifier.height(8.dp))
+        when {
+            loading -> {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    CircularProgressIndicator()
+                }
+            }
 
-            Text("Role: ${if (role.isBlank()) "Admin" else role}")
+            error != null -> {
+                Text(error ?: "", color = MaterialTheme.colorScheme.error)
+                Button(onClick = { load() }) { Text("Retry") }
+            }
+
+            else -> {
+                val user = me?.user
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(text = "Name: ${user?.name ?: "-"}")
+                        Text(text = "Email: ${user?.email ?: "-"}")
+                        Text(text = "Role: ${user?.role ?: "-"}")
+                    }
+                }
+
+                if (onLogout != null) {
+                    Button(onClick = onLogout) { Text("Logout") }
+                }
+            }
         }
     }
 }
