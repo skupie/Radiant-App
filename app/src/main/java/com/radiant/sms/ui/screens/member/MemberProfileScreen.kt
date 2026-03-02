@@ -23,7 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,7 +72,6 @@ fun MemberProfileScreen(nav: NavController) {
             isLoading = true
             error = null
             try {
-                // Fetch both for best coverage (photo is in share-details)
                 val p = repo.memberProfile()
                 val s = repo.memberShareDetails()
                 profile = p
@@ -176,7 +174,6 @@ fun MemberProfileScreen(nav: NavController) {
                 )
             }
 
-            // Photo (circle)
             Box(
                 modifier = Modifier
                     .height(120.dp)
@@ -219,7 +216,6 @@ fun MemberProfileScreen(nav: NavController) {
                 )
             }
 
-            // Name
             Text(
                 text = displayName,
                 style = MaterialTheme.typography.titleLarge,
@@ -229,7 +225,6 @@ fun MemberProfileScreen(nav: NavController) {
                     .padding(horizontal = 8.dp),
             )
 
-            // Change Password Section
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
@@ -252,8 +247,7 @@ fun MemberProfileScreen(nav: NavController) {
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("Current Password") },
                         singleLine = true,
-                        visualTransformation = if (showCurrent) VisualTransformation.None else PasswordVisualTransformation(),
-                        colors = TextFieldDefaults.outlinedTextFieldColors()
+                        visualTransformation = if (showCurrent) VisualTransformation.None else PasswordVisualTransformation()
                     )
                     TextButton(
                         onClick = { showCurrent = !showCurrent },
@@ -268,8 +262,7 @@ fun MemberProfileScreen(nav: NavController) {
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("New Password") },
                         singleLine = true,
-                        visualTransformation = if (showNew) VisualTransformation.None else PasswordVisualTransformation(),
-                        colors = TextFieldDefaults.outlinedTextFieldColors()
+                        visualTransformation = if (showNew) VisualTransformation.None else PasswordVisualTransformation()
                     )
                     TextButton(
                         onClick = { showNew = !showNew },
