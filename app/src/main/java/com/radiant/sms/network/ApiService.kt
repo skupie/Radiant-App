@@ -24,6 +24,7 @@ interface ApiService {
     @POST("api/auth/logout")
     suspend fun logout(): MessageResponse
 
+
     // ---------- MEMBER ----------
     @Headers("Accept: application/json")
     @GET("api/member/profile")
@@ -45,13 +46,14 @@ interface ApiService {
     @GET("api/member/share-details")
     suspend fun getMemberShareDetails(): MemberShareDetailsResponse
 
+
     // ---------- ADMIN ----------
     @Headers("Accept: application/json")
     @GET("api/admin/members")
     suspend fun adminMembers(
         @Query("search") search: String? = null,
         @Query("per_page") perPage: Int? = null,
-        @Query("page") page: Int? = null
+        @Query("page") page: Int? = null // ✅ add page for auto-fetch
     ): AdminMembersResponse
 
     @Headers("Accept: application/json")
@@ -69,13 +71,28 @@ interface ApiService {
 
     @Multipart
     @Headers("Accept: application/json")
-    @PUT("api/admin/members/{member}")
+    @POST("api/admin/members/{member}")
     suspend fun adminUpdateMember(
         @Path("member") memberId: Long,
         @Part parts: List<MultipartBody.Part>
     ): MessageResponse
 
-    // Export
+    // Keep these (your app already uses them)
+    @Headers("Accept: application/json")
+    @GET("api/admin/deposits")
+    suspend fun adminDeposits(
+        @Query("search") search: String? = null,
+        @Query("per_page") perPage: Int? = null
+    ): AnyJson
+
+    @Headers("Accept: application/json")
+    @GET("api/admin/due-summary")
+    suspend fun adminDueSummary(
+        @Query("search") search: String? = null,
+        @Query("per_page") perPage: Int? = null
+    ): AnyJson
+
+    // Exports
     @GET("api/admin/members/export/pdf")
     suspend fun adminMembersExportPdf(): Response<ResponseBody>
 
