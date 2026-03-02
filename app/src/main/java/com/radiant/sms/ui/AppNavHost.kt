@@ -7,7 +7,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.radiant.sms.ui.screens.LoginScreen
-import com.radiant.sms.ui.screens.MemberHomeScreen
+import com.radiant.sms.ui.screens.admin.AdminCreateMemberScreen
+import com.radiant.sms.ui.screens.admin.AdminMemberDetailsScreen
 import com.radiant.sms.ui.screens.SplashScreen
 import com.radiant.sms.ui.screens.admin.AdminDashboardScreen
 import com.radiant.sms.ui.screens.admin.AdminDepositsScreen
@@ -106,6 +107,21 @@ fun AppNavHost() {
             )
         }
 
+
+        composable("admin_create_member") {
+    AdminCreateMemberScreen(navController)
+}
+
+composable(
+    route = "admin_member_details/{id}",
+    arguments = listOf(navArgument("id") { type = NavType.LongType })
+) { backStackEntry ->
+    val id = backStackEntry.arguments?.getLong("id") ?: 0L
+    AdminMemberDetailsScreen(nav = navController, memberId = id)
+}
+        
+
+        
         composable(Rts.ADMIN_PANEL) {
             AdminPanelScreen(
                 onMemberClick = { memberId ->
