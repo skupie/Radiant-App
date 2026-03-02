@@ -1,6 +1,8 @@
 package com.radiant.sms.ui.screens.admin
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,7 +16,19 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.radiant.sms.AppConfig
 import com.radiant.sms.data.TokenStore
+import com.radiant.sms.network.AdminMemberDto
 import com.radiant.sms.util.DownloadHelper
+
+private fun adminMemberDetailsRoute(m: AdminMemberDto): String {
+    return "admin_member_details" +
+        "?id=${m.id ?: 0}" +
+        "&name=${Uri.encode(m.fullName ?: "-")}" +
+        "&email=${Uri.encode(m.email ?: "-")}" +
+        "&nid=${Uri.encode(m.nid ?: "-")}" +
+        "&share=${m.share ?: 0}" +
+        "&deposits=${m.depositsCount ?: 0}" +
+        "&total=${m.totalDeposited ?: 0.0}"
+}
 
 @Composable
 fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewModel()) {
@@ -110,9 +124,17 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
             items(s.members) { m ->
                 ElevatedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp)) {
-                        Text(m.fullName ?: "-", fontWeight = FontWeight.SemiBold)
+
+                        // ✅ Clicking on member NAME opens details
+                        Text(
+                            text = m.fullName ?: "-",
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clickable { nav.navigate(adminMemberDetailsRoute(m)) }
+                        )
+
                         Spacer(Modifier.height(2.dp))
                         Text(m.email ?: "-", style = MaterialTheme.typography.bodySmall)
+
                         Spacer(Modifier.height(8.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Share: ${m.share ?: 0}")
