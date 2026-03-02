@@ -21,5 +21,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "RadiantSMS"
+rootProject.name = "Radiant Association"
 include(":app")
