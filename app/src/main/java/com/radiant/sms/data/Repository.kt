@@ -1,50 +1,20 @@
 package com.radiant.sms.data
 
-import com.radiant.sms.network.AdminMembersResponse
-import com.radiant.sms.network.AnyJson
-import com.radiant.sms.network.ApiService
-import com.radiant.sms.network.ChangePasswordRequest
-import com.radiant.sms.network.LoginRequest
-import com.radiant.sms.network.LoginResponse
-import com.radiant.sms.network.MeResponse
-import com.radiant.sms.network.MemberDueSummaryResponse
-import com.radiant.sms.network.MemberLedgerResponse
-import com.radiant.sms.network.MemberProfileResponse
-import com.radiant.sms.network.MemberShareDetailsResponse
-import com.radiant.sms.network.MessageResponse
+import com.radiant.sms.network.*
+import okhttp3.MultipartBody
 
-/**
- * Single source of truth for API calls used by the app.
- *
- * NOTE:
- * - ApiService methods in this project return the *parsed models* directly (not retrofit2.Response<T>).
- * - So Repository also returns the models directly.
- */
 class Repository(private val api: ApiService) {
 
     // ---------- AUTH ----------
-    suspend fun login(request: LoginRequest): LoginResponse =
-        api.login(request)
-
-    /** Convenience overload used by ViewModels */
+    suspend fun login(request: LoginRequest): LoginResponse = api.login(request)
     suspend fun login(email: String, password: String): LoginResponse =
         login(LoginRequest(email = email, password = password))
 
-    suspend fun me(): MeResponse =
-        api.me()
+    suspend fun me(): MeResponse = api.me()
+    suspend fun logout(): MessageResponse = api.logout()
 
-    suspend fun logout(): MessageResponse =
-        api.logout()
-
-    /**
-     * Change password (member). Some backends expose this under different paths.
-     * We try member endpoint first, then fall back to auth endpoint.
-     */
     suspend fun changePassword(currentPassword: String, newPassword: String): MessageResponse {
-        val body = ChangePasswordRequest(
-            currentPassword = currentPassword,
-            newPassword = newPassword
-        )
+        val body = ChangePasswordRequest(currentPassword = currentPassword, newPassword = newPassword)
         return try {
             api.memberChangePassword(body)
         } catch (_: Exception) {
@@ -53,28 +23,37 @@ class Repository(private val api: ApiService) {
     }
 
     // ---------- MEMBER ----------
-    suspend fun memberProfile(): MemberProfileResponse =
-        api.getMemberProfile()
-
-    suspend fun memberLedger(year: Int? = null): MemberLedgerResponse =
-        api.getMemberLedger(year)
-
-    suspend fun memberDueSummary(year: Int? = null): MemberDueSummaryResponse =
-        api.getMemberDueSummary(year)
-
-    suspend fun memberShareDetails(): MemberShareDetailsResponse =
-        api.getMemberShareDetails()
+    suspend fun memberProfile(): MemberProfileResponse = api.getMemberProfile()
+    suspend fun memberLedger(year: Int? = null): MemberLedgerResponse = api.getMemberLedger(year)
+    suspend fun memberDueSummary(year: Int? = null): MemberDueSummaryResponse = api.getMemberDueSummary(year)
+    suspend fun memberShareDetails(): MemberShareDetailsResponse = api.getMemberShareDetails()
 
     // ---------- ADMIN ----------
-    suspend fun adminMembers(search: String? = null, perPage: Int? = null): AdminMembersResponse =
-        api.adminMembers(search = search, perPage = perPage)
+    suspend fun adminMembersAll(search: String? = null): List<AdminMemberDto> {
+        val all = mutableListOf<AdminMemberDto>()
+        val perPage = 100 // ✅ backend max 100 (web OpenAPI)
+        var page = 1
 
-    /**
-     * If your repo DOES NOT have AdminDepositsResponse/AdminDueSummaryResponse models,
-     * keep these as AnyJson to avoid compilation errors.
-     *
-     * If later you add proper models, you can change return types back.
-     */
+        while (true) {
+            val resp = api.adminMembers(search = search, perPage = perPage, page = page)
+            val chunk = resp.data
+            all.addAll(chunk)
+            if (chunk.size < perPage) break
+            page++
+        }
+
+        return all
+    }
+
+    suspend fun adminMemberDetails(memberId: Long): AdminMemberDetailsResponse =
+        api.adminMemberDetails(memberId)
+
+    suspend fun adminCreateMember(parts: List<MultipartBody.Part>): MessageResponse =
+        api.adminCreateMember(parts)
+
+    suspend fun adminUpdateMember(memberId: Long, parts: List<MultipartBody.Part>): MessageResponse =
+        api.adminUpdateMember(memberId, parts)
+
     suspend fun adminDeposits(search: String? = null, perPage: Int? = null): AnyJson =
         api.adminDeposits(search = search, perPage = perPage)
 
