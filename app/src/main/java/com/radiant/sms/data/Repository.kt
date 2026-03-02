@@ -1,8 +1,7 @@
 package com.radiant.sms.data
 
-import com.radiant.sms.network.AdminDepositsResponse
-import com.radiant.sms.network.AdminDueSummaryResponse
 import com.radiant.sms.network.AdminMembersResponse
+import com.radiant.sms.network.AnyJson
 import com.radiant.sms.network.ApiService
 import com.radiant.sms.network.ChangePasswordRequest
 import com.radiant.sms.network.LoginRequest
@@ -67,21 +66,18 @@ class Repository(private val api: ApiService) {
         api.getMemberShareDetails()
 
     // ---------- ADMIN ----------
-    /**
-     * IMPORTANT:
-     * These must return typed models (NOT AnyJson), otherwise your Admin UI code will fail to compile.
-     *
-     * Make sure ApiService admin methods also return these same models:
-     * - adminMembers(...) : AdminMembersResponse
-     * - adminDeposits(...) : AdminDepositsResponse
-     * - adminDueSummary(...) : AdminDueSummaryResponse
-     */
     suspend fun adminMembers(search: String? = null, perPage: Int? = null): AdminMembersResponse =
         api.adminMembers(search = search, perPage = perPage)
 
-    suspend fun adminDeposits(search: String? = null, perPage: Int? = null): AdminDepositsResponse =
+    /**
+     * If your repo DOES NOT have AdminDepositsResponse/AdminDueSummaryResponse models,
+     * keep these as AnyJson to avoid compilation errors.
+     *
+     * If later you add proper models, you can change return types back.
+     */
+    suspend fun adminDeposits(search: String? = null, perPage: Int? = null): AnyJson =
         api.adminDeposits(search = search, perPage = perPage)
 
-    suspend fun adminDueSummary(search: String? = null, perPage: Int? = null): AdminDueSummaryResponse =
+    suspend fun adminDueSummary(search: String? = null, perPage: Int? = null): AnyJson =
         api.adminDueSummary(search = search, perPage = perPage)
 }
