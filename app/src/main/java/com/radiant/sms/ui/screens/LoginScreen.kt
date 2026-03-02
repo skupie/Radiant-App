@@ -23,7 +23,7 @@ fun LoginScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
         if (!s.isLoading && s.tokenPresent) {
             val destination = when (s.role?.lowercase()) {
                 "admin" -> Routes.ADMIN_HOME
-                else -> Routes.MEMBER_SHARE_DETAILS
+                else -> Routes.MEMBER_LEDGER
             }
 
             nav.navigate(destination) {
