@@ -102,11 +102,11 @@ fun MemberDueSummaryScreen(navController: NavController) {
         ) {
 
             // Title added
-          /*  Text(
-                text = "Due Summary",
+           Text(
+                text = "Due",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold
-            ) */
+            )
 
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
