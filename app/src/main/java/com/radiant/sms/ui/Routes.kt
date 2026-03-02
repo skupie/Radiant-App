@@ -3,7 +3,7 @@ package com.radiant.sms.ui
 object Routes {
     const val SPLASH = "splash"
     const val LOGIN = "login"
-    const val MEMBER_HOME = "member_home"
+    const val MEMBER_HOME = "member_ledger"
     const val ADMIN_HOME = "admin_home"
 
     // Member feature routes (current API is for the logged-in member; no memberId needed)
