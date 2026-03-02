@@ -41,8 +41,8 @@ fun LoginScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
                 else -> Routes.MEMBER_LEDGER
             }
             nav.navigate(destination) {
-                popUpTo(Routes.LOGIN) { inclusive = true }
-                launchSingleTop = true
+                navController.popBackStack(Routes.LOGIN, true)
+                navController.navigate(Routes.ADMIN_HOME)
             }
         }
     }
