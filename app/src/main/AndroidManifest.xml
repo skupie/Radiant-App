@@ -3,7 +3,7 @@
 
     <application
         android:allowBackup="true"
-        android:label="RadiantSMS"
+        android:label="Radiant Association"
         android:supportsRtl="true"
         android:theme="@style/Theme.RadiantSMS">
         <activity
