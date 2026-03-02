@@ -52,7 +52,7 @@ interface ApiService {
 
     // ---------- ADMIN ----------
     @Headers("Accept: application/json")
-    @GET("api/admin/members")
+    @@GET("api/admin/members")
     suspend fun adminMembers(
         @Query("search") search: String? = null,
         @Query("per_page") perPage: Int? = null
