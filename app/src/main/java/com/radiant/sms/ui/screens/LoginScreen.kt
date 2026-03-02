@@ -1,7 +1,17 @@
 package com.radiant.sms.ui.screens
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -9,9 +19,21 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -23,16 +45,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.radiant.sms.R
+import com.radiant.sms.ui.Routes
 import com.radiant.sms.ui.viewmodel.AuthViewModel
-
-/**
- * Local routes so we don't depend on Routes.kt missing constants.
- */
-private object Rts {
-    const val LOGIN = "login"
-    const val MEMBER_LEDGER = "member_ledger"
-    const val ADMIN_DASHBOARD = "admin_dashboard"
-}
 
 @Composable
 fun LoginScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
@@ -45,13 +59,13 @@ fun LoginScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
     LaunchedEffect(s.isLoading, s.tokenPresent, s.role) {
         if (!s.isLoading && s.tokenPresent) {
             val destination = when (s.role?.lowercase()) {
-                "admin" -> Rts.ADMIN_DASHBOARD
-                else -> Rts.MEMBER_LEDGER
+                "admin" -> Routes.ADMIN_HOME
+                else -> Routes.MEMBER_LEDGER
             }
 
             nav.navigate(destination) {
                 // remove login from backstack
-                popUpTo(Rts.LOGIN) { inclusive = true }
+                popUpTo(Routes.LOGIN) { inclusive = true }
                 launchSingleTop = true
             }
         }
