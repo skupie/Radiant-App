@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions   // ✅ FIXED IMPORT
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
@@ -15,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -34,14 +34,12 @@ fun LoginScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
 
     val s by vm.state.collectAsState()
 
-    // Navigate away once login succeeds (token persisted)
     LaunchedEffect(s.isLoading, s.tokenPresent, s.role) {
         if (!s.isLoading && s.tokenPresent) {
             val destination = when (s.role?.lowercase()) {
                 "admin" -> Routes.ADMIN_HOME
                 else -> Routes.MEMBER_LEDGER
             }
-
             nav.navigate(destination) {
                 popUpTo(Routes.LOGIN) { inclusive = true }
                 launchSingleTop = true
@@ -64,7 +62,6 @@ fun LoginScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // Logo / Icon
             Image(
                 painter = painterResource(id = R.mipmap.ic_launcher_foreground),
                 contentDescription = "App Icon",
@@ -124,7 +121,6 @@ fun LoginScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
                         }
                     )
 
-                    // Error message (AuthViewModel already simplifies to "Wrong Credentials")
                     if (!s.error.isNullOrBlank()) {
                         Text(
                             text = s.error!!.trim(),
