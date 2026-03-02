@@ -34,8 +34,8 @@ fun AdminPanelScreen(
 
     LaunchedEffect(Unit) {
         try {
-            val res = repo.adminMembers(perPage = 1000)
-            members = res.data
+            // Loads ALL members (no pagination in UI)
+            members = repo.adminMembersAll()
         } catch (e: Exception) {
             error = e.message
         } finally {
@@ -119,7 +119,7 @@ fun AdminPanelScreen(
                             member = member,
                             onClick = {
                                 member.id?.let { id ->
-                                    onMemberClick(id.toInt()) // ✅ FIX HERE
+                                    onMemberClick(id.toInt())
                                 }
                             }
                         )
