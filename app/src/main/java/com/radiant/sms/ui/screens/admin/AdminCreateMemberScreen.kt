@@ -20,6 +20,7 @@ import com.radiant.sms.data.Repository
 import com.radiant.sms.util.MultipartUtil
 import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
+import com.radiant.sms.network.NetworkModule
 
 class AdminCreateMemberViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = Repository(NetworkModule.api(app.applicationContext))
