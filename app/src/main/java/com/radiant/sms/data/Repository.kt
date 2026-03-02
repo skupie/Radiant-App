@@ -31,7 +31,7 @@ class Repository(private val api: ApiService) {
     // ---------- ADMIN ----------
     suspend fun adminMembersAll(search: String? = null): List<AdminMemberDto> {
         val all = mutableListOf<AdminMemberDto>()
-        val perPage = 100 // ✅ backend max 100 (web OpenAPI)
+        val perPage = 100 // ✅ backend max (prevents HTTP 422)
         var page = 1
 
         while (true) {
@@ -54,6 +54,7 @@ class Repository(private val api: ApiService) {
     suspend fun adminUpdateMember(memberId: Long, parts: List<MultipartBody.Part>): MessageResponse =
         api.adminUpdateMember(memberId, parts)
 
+    // keep existing screens working
     suspend fun adminDeposits(search: String? = null, perPage: Int? = null): AnyJson =
         api.adminDeposits(search = search, perPage = perPage)
 
