@@ -4,10 +4,14 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.radiant.sms.ui.screens.AdminHomeScreen
 import com.radiant.sms.ui.screens.LoginScreen
 import com.radiant.sms.ui.screens.MemberHomeScreen
 import com.radiant.sms.ui.screens.SplashScreen
+import com.radiant.sms.ui.screens.admin.AdminDashboardScreen
+import com.radiant.sms.ui.screens.admin.AdminDepositsScreen
+import com.radiant.sms.ui.screens.admin.AdminDueAmountsScreen
+import com.radiant.sms.ui.screens.admin.AdminPanelScreen
+import com.radiant.sms.ui.screens.admin.AdminProfileScreen
 import com.radiant.sms.ui.screens.member.MemberDueSummaryScreen
 import com.radiant.sms.ui.screens.member.MemberLedgerScreen
 import com.radiant.sms.ui.screens.member.MemberProfileScreen
@@ -24,12 +28,18 @@ fun AppNavHost() {
         composable(Routes.SPLASH) { SplashScreen(navController) }
         composable(Routes.LOGIN) { LoginScreen(navController) }
 
-        composable(Routes.ADMIN_HOME) { AdminHomeScreen(navController) }
+        // Member
         composable(Routes.MEMBER_HOME) { MemberHomeScreen(navController) }
-
         composable(Routes.MEMBER_PROFILE) { MemberProfileScreen(navController) }
         composable(Routes.MEMBER_LEDGER) { MemberLedgerScreen(navController) }
         composable(Routes.MEMBER_DUE_SUMMARY) { MemberDueSummaryScreen(navController) }
         composable(Routes.MEMBER_SHARE_DETAILS) { MemberShareDetailsScreen(navController) }
+
+        // ✅ Admin
+        composable(Routes.ADMIN_DASHBOARD) { AdminDashboardScreen(navController) }
+        composable(Routes.ADMIN_DEPOSITS) { AdminDepositsScreen(navController) }
+        composable(Routes.ADMIN_DUE_AMOUNTS) { AdminDueAmountsScreen(navController) }
+        composable(Routes.ADMIN_PROFILE) { AdminProfileScreen(navController) }
+        composable(Routes.ADMIN_PANEL) { AdminPanelScreen(navController) }
     }
 }
