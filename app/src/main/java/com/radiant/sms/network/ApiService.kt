@@ -1,12 +1,9 @@
 package com.radiant.sms.network
 
+import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Response
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.Headers
-import retrofit2.http.POST
-import retrofit2.http.Query
+import retrofit2.http.*
 
 interface ApiService {
 
@@ -26,7 +23,6 @@ interface ApiService {
     @Headers("Accept: application/json")
     @POST("api/auth/logout")
     suspend fun logout(): MessageResponse
-
 
     // ---------- MEMBER ----------
     @Headers("Accept: application/json")
@@ -49,30 +45,37 @@ interface ApiService {
     @GET("api/member/share-details")
     suspend fun getMemberShareDetails(): MemberShareDetailsResponse
 
-
     // ---------- ADMIN ----------
     @Headers("Accept: application/json")
     @GET("api/admin/members")
     suspend fun adminMembers(
         @Query("search") search: String? = null,
-        @Query("per_page") perPage: Int? = null
+        @Query("per_page") perPage: Int? = null,
+        @Query("page") page: Int? = null
     ): AdminMembersResponse
 
     @Headers("Accept: application/json")
-    @GET("api/admin/deposits")
-    suspend fun adminDeposits(
-        @Query("search") search: String? = null,
-        @Query("per_page") perPage: Int? = null
-    ): AnyJson
+    @GET("api/admin/members/{member}")
+    suspend fun adminMemberDetails(
+        @Path("member") memberId: Long
+    ): AdminMemberDetailsResponse
 
+    @Multipart
     @Headers("Accept: application/json")
-    @GET("api/admin/due-summary")
-    suspend fun adminDueSummary(
-        @Query("search") search: String? = null,
-        @Query("per_page") perPage: Int? = null
-    ): AnyJson
+    @POST("api/admin/members")
+    suspend fun adminCreateMember(
+        @Part parts: List<MultipartBody.Part>
+    ): MessageResponse
 
-    // ✅ NEW: Export all members
+    @Multipart
+    @Headers("Accept: application/json")
+    @PUT("api/admin/members/{member}")
+    suspend fun adminUpdateMember(
+        @Path("member") memberId: Long,
+        @Part parts: List<MultipartBody.Part>
+    ): MessageResponse
+
+    // Export
     @GET("api/admin/members/export/pdf")
     suspend fun adminMembersExportPdf(): Response<ResponseBody>
 
