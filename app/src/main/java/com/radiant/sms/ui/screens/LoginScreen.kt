@@ -4,7 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions   // ✅ FIXED IMPORT
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
@@ -23,8 +23,16 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.radiant.sms.R
-import com.radiant.sms.ui.Routes
 import com.radiant.sms.ui.viewmodel.AuthViewModel
+
+/**
+ * Local routes so we don't depend on Routes.kt missing constants.
+ */
+private object Rts {
+    const val LOGIN = "login"
+    const val MEMBER_LEDGER = "member_ledger"
+    const val ADMIN_DASHBOARD = "admin_dashboard"
+}
 
 @Composable
 fun LoginScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
@@ -37,12 +45,14 @@ fun LoginScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
     LaunchedEffect(s.isLoading, s.tokenPresent, s.role) {
         if (!s.isLoading && s.tokenPresent) {
             val destination = when (s.role?.lowercase()) {
-                "admin" -> Routes.ADMIN_HOME
-                else -> Routes.MEMBER_LEDGER
+                "admin" -> Rts.ADMIN_DASHBOARD
+                else -> Rts.MEMBER_LEDGER
             }
+
             nav.navigate(destination) {
-                navController.popBackStack(Routes.LOGIN, true)
-                navController.navigate(Routes.ADMIN_HOME)
+                // remove login from backstack
+                popUpTo(Rts.LOGIN) { inclusive = true }
+                launchSingleTop = true
             }
         }
     }
