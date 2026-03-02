@@ -26,11 +26,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.radiant.sms.network.AdminMemberDto
-import com.radiant.sms.network.NetworkModule
+import com.radiant.sms.network
+import androidx.compose.ui.platform.LocalContext
+import com.radiant.sms.data.Repository
 
 @Composable
 fun AdminPanelScreen(modifier: Modifier = Modifier) {
-    val repo = NetworkModule.repository
+    val context = LocalContext.current
+    val api = remember { NetworkModule.api(context) }
+    val repo = remember { Repository(api) }
 
     var search by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
