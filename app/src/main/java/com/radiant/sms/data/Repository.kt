@@ -1,16 +1,18 @@
 package com.radiant.sms.data
 
+import com.radiant.sms.network.AdminDepositsResponse
+import com.radiant.sms.network.AdminDueSummaryResponse
+import com.radiant.sms.network.AdminMembersResponse
 import com.radiant.sms.network.ApiService
+import com.radiant.sms.network.ChangePasswordRequest
 import com.radiant.sms.network.LoginRequest
 import com.radiant.sms.network.LoginResponse
 import com.radiant.sms.network.MeResponse
-import com.radiant.sms.network.MessageResponse
 import com.radiant.sms.network.MemberDueSummaryResponse
 import com.radiant.sms.network.MemberLedgerResponse
 import com.radiant.sms.network.MemberProfileResponse
 import com.radiant.sms.network.MemberShareDetailsResponse
-import com.radiant.sms.network.AnyJson
-import com.radiant.sms.network.ChangePasswordRequest
+import com.radiant.sms.network.MessageResponse
 
 /**
  * Single source of truth for API calls used by the app.
@@ -65,12 +67,21 @@ class Repository(private val api: ApiService) {
         api.getMemberShareDetails()
 
     // ---------- ADMIN ----------
-    suspend fun adminMembers(search: String? = null, perPage: Int? = null): AnyJson =
+    /**
+     * IMPORTANT:
+     * These must return typed models (NOT AnyJson), otherwise your Admin UI code will fail to compile.
+     *
+     * Make sure ApiService admin methods also return these same models:
+     * - adminMembers(...) : AdminMembersResponse
+     * - adminDeposits(...) : AdminDepositsResponse
+     * - adminDueSummary(...) : AdminDueSummaryResponse
+     */
+    suspend fun adminMembers(search: String? = null, perPage: Int? = null): AdminMembersResponse =
         api.adminMembers(search = search, perPage = perPage)
 
-    suspend fun adminDeposits(search: String? = null, perPage: Int? = null): AnyJson =
+    suspend fun adminDeposits(search: String? = null, perPage: Int? = null): AdminDepositsResponse =
         api.adminDeposits(search = search, perPage = perPage)
 
-    suspend fun adminDueSummary(search: String? = null, perPage: Int? = null): AnyJson =
+    suspend fun adminDueSummary(search: String? = null, perPage: Int? = null): AdminDueSummaryResponse =
         api.adminDueSummary(search = search, perPage = perPage)
 }
