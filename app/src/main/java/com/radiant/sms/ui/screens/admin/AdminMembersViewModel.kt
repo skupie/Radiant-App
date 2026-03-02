@@ -3,7 +3,7 @@ package com.radiant.sms.ui.screens.admin
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.radiant.sms.network.MemberDto
+import com.radiant.sms.network.AdminMemberDto
 import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 data class AdminMembersState(
     val isLoading: Boolean = false,
     val query: String = "",
-    val members: List<MemberDto> = emptyList(),
+    val members: List<AdminMemberDto> = emptyList(),
     val error: String? = null
 )
 
