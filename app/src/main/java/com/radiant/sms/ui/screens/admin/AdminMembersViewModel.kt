@@ -37,7 +37,8 @@ class AdminMembersViewModel(app: Application) : AndroidViewModel(app) {
                 _state.value = _state.value.copy(isLoading = true, error = null)
                 val resp = api.adminMembers(
                     search = _state.value.query.takeIf { it.isNotBlank() },
-                    perPage = 10
+                    // ✅ No pagination on admin landing
+                    perPage = 5000
                 )
                 _state.value = _state.value.copy(isLoading = false, members = resp.data)
             } catch (e: Exception) {
