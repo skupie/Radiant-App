@@ -35,8 +35,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.TokenStore
-import com.radiant.sms.ui.Routes
 import kotlinx.coroutines.launch
+
+/**
+ * Local routes so this file doesn't fail if Routes.kt is missing constants.
+ */
+private object Rts {
+    const val LOGIN = "login"
+    const val MEMBER_LEDGER = "member_ledger"
+    const val MEMBER_DUE_SUMMARY = "member_due_summary"
+    const val MEMBER_SHARE_DETAILS = "member_share_details"
+    const val MEMBER_PROFILE = "member_profile"
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,7 +65,7 @@ fun ScreenScaffold(
 
     fun logout() {
         tokenStore.clear()
-        nav.navigate(Routes.LOGIN) {
+        nav.navigate(Rts.LOGIN) {
             popUpTo(0) { inclusive = true }
             launchSingleTop = true
         }
@@ -73,7 +83,7 @@ fun ScreenScaffold(
         gesturesEnabled = showHamburger,
         drawerContent = {
             ModalDrawerSheet(
-                modifier = Modifier.width(280.dp) // ✅ sidebar width
+                modifier = Modifier.width(280.dp)
             ) {
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -83,7 +93,7 @@ fun ScreenScaffold(
                     icon = { Icon(Icons.Filled.List, contentDescription = null) },
                     onClick = {
                         closeDrawerThen {
-                            nav.navigate(Routes.MEMBER_LEDGER) { launchSingleTop = true }
+                            nav.navigate(Rts.MEMBER_LEDGER) { launchSingleTop = true }
                         }
                     }
                 )
@@ -94,7 +104,7 @@ fun ScreenScaffold(
                     icon = { Icon(Icons.Filled.Assignment, contentDescription = null) },
                     onClick = {
                         closeDrawerThen {
-                            nav.navigate(Routes.MEMBER_DUE_SUMMARY) { launchSingleTop = true }
+                            nav.navigate(Rts.MEMBER_DUE_SUMMARY) { launchSingleTop = true }
                         }
                     }
                 )
@@ -105,7 +115,7 @@ fun ScreenScaffold(
                     icon = { Icon(Icons.Filled.Info, contentDescription = null) },
                     onClick = {
                         closeDrawerThen {
-                            nav.navigate(Routes.MEMBER_SHARE_DETAILS) { launchSingleTop = true }
+                            nav.navigate(Rts.MEMBER_SHARE_DETAILS) { launchSingleTop = true }
                         }
                     }
                 )
@@ -116,7 +126,7 @@ fun ScreenScaffold(
                     icon = { Icon(Icons.Filled.Person, contentDescription = null) },
                     onClick = {
                         closeDrawerThen {
-                            nav.navigate(Routes.MEMBER_PROFILE) { launchSingleTop = true }
+                            nav.navigate(Rts.MEMBER_PROFILE) { launchSingleTop = true }
                         }
                     }
                 )
