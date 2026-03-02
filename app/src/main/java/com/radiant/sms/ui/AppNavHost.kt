@@ -7,9 +7,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.radiant.sms.ui.screens.LoginScreen
-import com.radiant.sms.ui.screens.admin.AdminCreateMemberScreen
-import com.radiant.sms.ui.screens.admin.AdminMemberDetailsScreen
+import com.radiant.sms.ui.screens.MemberHomeScreen
 import com.radiant.sms.ui.screens.SplashScreen
+import com.radiant.sms.ui.screens.admin.AdminCreateMemberScreen
 import com.radiant.sms.ui.screens.admin.AdminDashboardScreen
 import com.radiant.sms.ui.screens.admin.AdminDepositsScreen
 import com.radiant.sms.ui.screens.admin.AdminDueAmountsScreen
@@ -37,6 +37,7 @@ private object Rts {
     const val ADMIN_PROFILE = "admin_profile"
     const val ADMIN_PANEL = "admin_panel"
 
+    const val ADMIN_CREATE_MEMBER = "admin_create_member"
     const val ADMIN_MEMBER_DETAILS = "admin_member_details"
 }
 
@@ -63,37 +64,18 @@ fun AppNavHost() {
         composable(Rts.ADMIN_DEPOSITS) { AdminDepositsScreen(navController) }
         composable(Rts.ADMIN_DUE_AMOUNTS) { AdminDueAmountsScreen(navController) }
 
-        // ✅ Member Details screen (opened from Admin Dashboard member name click)
-        composable(
-            route = Rts.ADMIN_MEMBER_DETAILS + "?id={id}&name={name}&email={email}&nid={nid}&share={share}&deposits={deposits}&total={total}",
-            arguments = listOf(
-                navArgument("id") { type = NavType.LongType; defaultValue = 0L },
-                navArgument("name") { type = NavType.StringType; defaultValue = "-" },
-                navArgument("email") { type = NavType.StringType; defaultValue = "-" },
-                navArgument("nid") { type = NavType.StringType; defaultValue = "-" },
-                navArgument("share") { type = NavType.IntType; defaultValue = 0 },
-                navArgument("deposits") { type = NavType.IntType; defaultValue = 0 },
-                navArgument("total") { type = NavType.FloatType; defaultValue = 0f }
-            )
-        ) { backStackEntry ->
-            val id = backStackEntry.arguments?.getLong("id") ?: 0L
-            val name = backStackEntry.arguments?.getString("name") ?: "-"
-            val email = backStackEntry.arguments?.getString("email") ?: "-"
-            val nid = backStackEntry.arguments?.getString("nid") ?: "-"
-            val share = backStackEntry.arguments?.getInt("share") ?: 0
-            val deposits = backStackEntry.arguments?.getInt("deposits") ?: 0
-            val total = (backStackEntry.arguments?.getFloat("total") ?: 0f).toDouble()
+        // ✅ NEW: Create Member
+        composable(Rts.ADMIN_CREATE_MEMBER) {
+            AdminCreateMemberScreen(navController)
+        }
 
-            AdminMemberDetailsScreen(
-                nav = navController,
-                id = id,
-                name = name,
-                email = email,
-                nid = nid,
-                share = share,
-                deposits = deposits,
-                total = total
-            )
+        // ✅ NEW: Member details by ID only
+        composable(
+            route = "${Rts.ADMIN_MEMBER_DETAILS}/{memberId}",
+            arguments = listOf(navArgument("memberId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val memberId = backStackEntry.arguments?.getLong("memberId") ?: 0L
+            AdminMemberDetailsScreen(nav = navController, memberId = memberId)
         }
 
         composable(Rts.ADMIN_PROFILE) {
@@ -107,29 +89,12 @@ fun AppNavHost() {
             )
         }
 
-
-        composable("admin_create_member") {
-    AdminCreateMemberScreen(navController)
-}
-
-composable(
-    route = "admin_member_details/{id}",
-    arguments = listOf(navArgument("id") { type = NavType.LongType })
-) { backStackEntry ->
-    val id = backStackEntry.arguments?.getLong("id") ?: 0L
-    AdminMemberDetailsScreen(nav = navController, memberId = id)
-}
-        
-
-        
         composable(Rts.ADMIN_PANEL) {
             AdminPanelScreen(
                 onMemberClick = { memberId ->
-                    navController.navigate(
-                        "${Rts.ADMIN_MEMBER_DETAILS}?id=$memberId&name=-&email=-&nid=-&share=0&deposits=0&total=0"
-                    )
+                    navController.navigate("${Rts.ADMIN_MEMBER_DETAILS}/$memberId")
                 },
-                onCreateMemberClick = { navController.navigate("admin_create_member") },
+                onCreateMemberClick = { navController.navigate(Rts.ADMIN_CREATE_MEMBER) },
                 onExportPdfClick = { },
                 onExportExcelClick = { }
             )
