@@ -11,23 +11,22 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.radiant.sms.network.NetworkModule
+import com.radiant.sms.data.Repository
+import com.radiant.sms.network
 
 @Composable
 fun AdminProfileScreen(
     modifier: Modifier = Modifier,
     onLogout: (() -> Unit)? = null
 ) {
-    val repo = NetworkModule.repository
+    val context = LocalContext.current
+    val api = remember { NetworkModule.api(context) }
+    val repo = remember { Repository(api) }
 
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -83,7 +82,10 @@ fun AdminProfileScreen(
 
             else -> {
                 Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         Text(
                             text = fullName?.takeIf { it.isNotBlank() } ?: "Admin",
                             style = MaterialTheme.typography.titleMedium
