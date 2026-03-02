@@ -20,8 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.radiant.sms.data.NetworkModule
-import com.radiant.sms.network.MeResponse
+import com.radiant.sms.network.NetworkModule
 
 @Composable
 fun AdminProfileScreen(
@@ -32,29 +31,21 @@ fun AdminProfileScreen(
 
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    var me by remember { mutableStateOf<MeResponse?>(null) }
+    var fullName by remember { mutableStateOf<String?>(null) }
+    var email by remember { mutableStateOf<String?>(null) }
 
     fun load() {
         loading = true
         error = null
-        me = null
     }
 
-    LaunchedEffect(Unit) {
-        try {
-            me = repo.me()
-        } catch (e: Exception) {
-            error = e.message ?: "Failed to load profile"
-        } finally {
-            loading = false
-        }
-    }
-
-    // manual reload trigger
     LaunchedEffect(loading) {
         if (!loading) return@LaunchedEffect
+
         try {
-            me = repo.me()
+            val me = repo.me()
+            fullName = me.data.fullName
+            email = me.data.email
         } catch (e: Exception) {
             error = e.message ?: "Failed to load profile"
         } finally {
@@ -68,32 +59,56 @@ fun AdminProfileScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Admin Profile", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            text = "Admin Profile",
+            style = MaterialTheme.typography.headlineSmall
+        )
 
         when {
             loading -> {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
                     CircularProgressIndicator()
                 }
             }
 
             error != null -> {
-                Text(error ?: "", color = MaterialTheme.colorScheme.error)
-                Button(onClick = { load() }) { Text("Retry") }
+                Text(
+                    text = error ?: "",
+                    color = MaterialTheme.colorScheme.error
+                )
             }
 
             else -> {
-                val user = me?.user
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(text = "Name: ${user?.name ?: "-"}")
-                        Text(text = "Email: ${user?.email ?: "-"}")
-                        Text(text = "Role: ${user?.role ?: "-"}")
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = fullName?.takeIf { it.isNotBlank() } ?: "Admin",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = email?.takeIf { it.isNotBlank() } ?: "",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     }
                 }
+            }
+        }
 
-                if (onLogout != null) {
-                    Button(onClick = onLogout) { Text("Logout") }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(onClick = { load() }, enabled = !loading) {
+                Text("Reload")
+            }
+
+            if (onLogout != null) {
+                Button(onClick = { onLogout() }, enabled = !loading) {
+                    Text("Logout")
                 }
             }
         }
