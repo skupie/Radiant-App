@@ -73,7 +73,20 @@ fun AppNavHost() {
             )
         }
         composable(Rts.ADMIN_PANEL) {
-            AdminPanelScreen()
+            AdminPanelScreen(
+                onMemberClick = { memberId ->
+        navController.navigate("admin_member_details/$memberId")
+    },
+    onCreateMemberClick = {
+        navController.navigate("admin_create_member")
+    },
+    onExportPdfClick = {
+        // call backend export
+    },
+    onExportExcelClick = {
+        // call backend export
+    }
+            )
         }
     }
 }
