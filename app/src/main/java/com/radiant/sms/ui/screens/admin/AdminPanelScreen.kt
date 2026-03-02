@@ -25,32 +25,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.radiant.sms.data.NetworkModule
 import com.radiant.sms.network.AdminMemberDto
+import com.radiant.sms.network.NetworkModule
 
 @Composable
 fun AdminPanelScreen(modifier: Modifier = Modifier) {
     val repo = NetworkModule.repository
 
     var search by remember { mutableStateOf("") }
-
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-
     var members by remember { mutableStateOf<List<AdminMemberDto>>(emptyList()) }
-
-    fun loadMembers() {
-        loading = true
-        error = null
-        members = emptyList()
-
-        // Using LaunchedEffect style trigger is cleaner, but this is a small self-contained screen:
-        // we just launch in composition via a state flip.
-    }
 
     // initial load
     LaunchedEffect(Unit) {
         loading = true
+        error = null
         try {
             val res = repo.adminMembers(search = null, perPage = 50)
             members = res.data
@@ -91,7 +81,8 @@ fun AdminPanelScreen(modifier: Modifier = Modifier) {
                     loading = true
                     error = null
                     members = emptyList()
-                }
+                },
+                enabled = !loading
             ) {
                 Text("Search")
             }
@@ -99,7 +90,6 @@ fun AdminPanelScreen(modifier: Modifier = Modifier) {
 
         // Search trigger
         LaunchedEffect(loading) {
-            // Only run when we explicitly set loading = true via Search button
             if (!loading) return@LaunchedEffect
 
             try {
@@ -154,7 +144,7 @@ fun AdminPanelScreen(modifier: Modifier = Modifier) {
                                 )
                                 Spacer(Modifier.height(6.dp))
                                 Text(
-                                    text = "This section is intentionally kept simple to avoid build errors when AdminDepositsResponse/AdminDueSummaryResponse models are missing in your repo.",
+                                    text = "This section is intentionally kept simple.",
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
@@ -168,15 +158,19 @@ fun AdminPanelScreen(modifier: Modifier = Modifier) {
 
 @Composable
 private fun MemberRow(m: AdminMemberDto) {
+    // FIX: no `name`, and email can be nullable
+    val name = m.fullName?.takeIf { it.isNotBlank() } ?: "Unnamed member"
+    val email = m.email?.takeIf { it.isNotBlank() } ?: "No email"
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
-                text = m.name.ifBlank { "Unnamed member" },
+                text = name,
                 style = MaterialTheme.typography.titleMedium
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = m.email.ifBlank { "No email" },
+                text = email,
                 style = MaterialTheme.typography.bodyMedium
             )
         }
