@@ -6,7 +6,7 @@ object Routes {
     const val LOGIN = "login"
 
     // MEMBER
-    const val MEMBER_HOME = "member_home"
+    const val MEMBER_HOME = "member_ledger"
     const val MEMBER_LEDGER = "member_ledger"
 
     // ADMIN
