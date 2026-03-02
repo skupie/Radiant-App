@@ -1,6 +1,5 @@
 package com.radiant.sms.ui.screens.admin
 
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,19 +15,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.radiant.sms.AppConfig
 import com.radiant.sms.data.TokenStore
-import com.radiant.sms.network.AdminMemberDto
 import com.radiant.sms.util.DownloadHelper
-
-private fun adminMemberDetailsRoute(m: AdminMemberDto): String {
-    return "admin_member_details" +
-        "?id=${m.id ?: 0}" +
-        "&name=${Uri.encode(m.fullName ?: "-")}" +
-        "&email=${Uri.encode(m.email ?: "-")}" +
-        "&nid=${Uri.encode(m.nid ?: "-")}" +
-        "&share=${m.share ?: 0}" +
-        "&deposits=${m.depositsCount ?: 0}" +
-        "&total=${m.totalDeposited ?: 0.0}"
-}
 
 @Composable
 fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewModel()) {
@@ -42,6 +29,7 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
         Text("Dashboard", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(12.dp))
 
+        // ✅ Same as web: PDF + Excel + Create Member
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
                 modifier = Modifier.weight(1f),
@@ -74,6 +62,15 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                     Toast.makeText(context, "Downloading Excel...", Toast.LENGTH_SHORT).show()
                 }
             ) { Text("All Members Excel") }
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { nav.navigate("admin_create_member") }
+        ) {
+            Text("Create Member")
         }
 
         Spacer(Modifier.height(12.dp))
@@ -124,22 +121,20 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
             items(s.members) { m ->
                 ElevatedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp)) {
-
-                        // ✅ Clicking on member NAME opens details
                         Text(
                             text = m.fullName ?: "-",
                             fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.clickable { nav.navigate(adminMemberDetailsRoute(m)) }
+                            modifier = Modifier.clickable {
+                                val id = m.id ?: 0L
+                                nav.navigate("admin_member_details/$id")
+                            }
                         )
-
                         Spacer(Modifier.height(2.dp))
                         Text(m.email ?: "-", style = MaterialTheme.typography.bodySmall)
-
                         Spacer(Modifier.height(8.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Share: ${m.share ?: 0}")
                             Text("Deposits: ${m.depositsCount ?: 0}")
-                            Text("৳ ${m.totalDeposited ?: 0.0}")
                         }
                     }
                 }
