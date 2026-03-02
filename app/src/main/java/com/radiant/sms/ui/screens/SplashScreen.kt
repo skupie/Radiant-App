@@ -19,7 +19,7 @@ fun SplashScreen(nav: NavController, vm: AuthViewModel = viewModel()) {
         if (!s.isLoading) {
             val destination = if (s.tokenPresent) {
                 when (s.role?.lowercase()) {
-                    "admin" -> Routes.ADMIN_HOME
+                    "admin" -> Routes.ADMIN_DASHBOARD
                     else -> Routes.MEMBER_LEDGER
                 }
             } else {
