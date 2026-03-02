@@ -34,7 +34,7 @@ fun AdminPanelScreen(
 
     LaunchedEffect(Unit) {
         try {
-            val res = repo.adminMembers(perPage = 1000) // Load all
+            val res = repo.adminMembers(perPage = 1000)
             members = res.data
         } catch (e: Exception) {
             error = e.message
@@ -49,7 +49,6 @@ fun AdminPanelScreen(
             .padding(16.dp)
     ) {
 
-        // 🔹 Header
         Text(
             text = "Admin Dashboard",
             style = MaterialTheme.typography.headlineMedium,
@@ -58,7 +57,6 @@ fun AdminPanelScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // 🔹 Top Action Row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -89,7 +87,10 @@ fun AdminPanelScreen(
 
         when {
             loading -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
                     CircularProgressIndicator()
                 }
             }
@@ -117,7 +118,9 @@ fun AdminPanelScreen(
                         MemberCard(
                             member = member,
                             onClick = {
-                                member.id?.let { onMemberClick(it) }
+                                member.id?.let { id ->
+                                    onMemberClick(id.toInt()) // ✅ FIX HERE
+                                }
                             }
                         )
                     }
