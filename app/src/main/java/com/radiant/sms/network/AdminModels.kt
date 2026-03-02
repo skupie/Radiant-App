@@ -5,7 +5,7 @@ import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
 data class AdminMembersResponse(
-    val data: List<MemberDto> = emptyList(),
+    val data: List<AdminMemberDto> = emptyList(),
     val meta: PageMeta? = null
 )
 
@@ -18,7 +18,7 @@ data class PageMeta(
 )
 
 @JsonClass(generateAdapter = true)
-data class MemberDto(
+data class AdminMemberDto(
     val id: Long? = null,
     @Json(name = "full_name") val fullName: String? = null,
     val email: String? = null,
