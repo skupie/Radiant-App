@@ -24,8 +24,6 @@ data class AuthState(
 class AuthViewModel(app: Application) : AndroidViewModel(app) {
 
     private val tokenStore = TokenStore(app.applicationContext)
-
-    // ✅ IMPORTANT: always use TokenStore-backed API
     private val api = NetworkModule.api(app.applicationContext)
     private val repo = Repository(api)
 
@@ -52,7 +50,6 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val res = repo.login(email, password)
 
-                // ✅ Save token to SharedPreferences
                 tokenStore.saveToken(res.token, res.user.role)
 
                 _state.value = AuthState(
@@ -62,41 +59,38 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                 )
 
             } catch (e: HttpException) {
+
                 val code = e.code()
-                val errorBody = try {
-                    e.response()?.errorBody()?.string()
-                } catch (_: Exception) {
-                    null
+                Log.e("API_HTTP", "Login failed: HTTP $code", e)
+
+                // ✅ Only show simple message for invalid login
+                if (code == 401 || code == 422) {
+                    _state.value = AuthState(
+                        isLoading = false,
+                        error = "Wrong Credentials",
+                        tokenPresent = false
+                    )
+                } else {
+                    _state.value = AuthState(
+                        isLoading = false,
+                        error = "Login failed. Please try again.",
+                        tokenPresent = false
+                    )
                 }
 
-                Log.e("API_HTTP", "Login failed: HTTP $code body=$errorBody", e)
-
-                _state.value = AuthState(
-                    isLoading = false,
-                    error = buildString {
-                        append("HTTP ").append(code)
-                        if (!errorBody.isNullOrBlank()) {
-                            append("\n\n").append(errorBody)
-                        }
-                    },
-                    tokenPresent = false
-                )
-
             } catch (e: JsonDataException) {
-                Log.e("API_HTTP", "JSON parse error", e)
 
                 _state.value = AuthState(
                     isLoading = false,
-                    error = "Server returned invalid JSON",
+                    error = "Server error. Please try again.",
                     tokenPresent = false
                 )
 
             } catch (e: Exception) {
-                Log.e("API_HTTP", "Login failed", e)
 
                 _state.value = AuthState(
                     isLoading = false,
-                    error = e.message ?: "Login failed",
+                    error = "Something went wrong",
                     tokenPresent = false
                 )
             }
