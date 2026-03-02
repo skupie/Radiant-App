@@ -17,7 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.radiant.sms.data.Repository
-import com.radiant.sms.network
+import com.radiant.sms.network.NetworkModule
 
 @Composable
 fun AdminProfileScreen(
