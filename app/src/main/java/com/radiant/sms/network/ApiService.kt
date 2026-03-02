@@ -1,5 +1,7 @@
 package com.radiant.sms.network
 
+import okhttp3.ResponseBody
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Headers
@@ -9,17 +11,11 @@ import retrofit2.http.Query
 interface ApiService {
 
     // ---------- AUTH ----------
-    @Headers(
-        "Accept: application/json",
-        "Content-Type: application/json"
-    )
+    @Headers("Accept: application/json", "Content-Type: application/json")
     @POST("api/auth/login")
     suspend fun login(@Body body: LoginRequest): LoginResponse
 
-    @Headers(
-        "Accept: application/json",
-        "Content-Type: application/json"
-    )
+    @Headers("Accept: application/json", "Content-Type: application/json")
     @POST("api/auth/change-password")
     suspend fun authChangePassword(@Body body: ChangePasswordRequest): MessageResponse
 
@@ -37,10 +33,7 @@ interface ApiService {
     @GET("api/member/profile")
     suspend fun getMemberProfile(): MemberProfileResponse
 
-    @Headers(
-        "Accept: application/json",
-        "Content-Type: application/json"
-    )
+    @Headers("Accept: application/json", "Content-Type: application/json")
     @POST("api/member/change-password")
     suspend fun memberChangePassword(@Body body: ChangePasswordRequest): MessageResponse
 
@@ -62,20 +55,27 @@ interface ApiService {
     @GET("api/admin/members")
     suspend fun adminMembers(
         @Query("search") search: String? = null,
-        @Query("perPage") perPage: Int? = null
-    ): AnyJson
+        @Query("per_page") perPage: Int? = null
+    ): AdminMembersResponse
 
     @Headers("Accept: application/json")
     @GET("api/admin/deposits")
     suspend fun adminDeposits(
         @Query("search") search: String? = null,
-        @Query("perPage") perPage: Int? = null
+        @Query("per_page") perPage: Int? = null
     ): AnyJson
 
     @Headers("Accept: application/json")
     @GET("api/admin/due-summary")
     suspend fun adminDueSummary(
         @Query("search") search: String? = null,
-        @Query("perPage") perPage: Int? = null
+        @Query("per_page") perPage: Int? = null
     ): AnyJson
+
+    // ✅ NEW: Export all members
+    @GET("api/admin/members/export/pdf")
+    suspend fun adminMembersExportPdf(): Response<ResponseBody>
+
+    @GET("api/admin/members/export/excel")
+    suspend fun adminMembersExportExcel(): Response<ResponseBody>
 }
