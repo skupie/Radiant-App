@@ -16,6 +16,13 @@ interface ApiService {
     @POST("api/auth/login")
     suspend fun login(@Body body: LoginRequest): LoginResponse
 
+    @Headers(
+        "Accept: application/json",
+        "Content-Type: application/json"
+    )
+    @POST("api/auth/change-password")
+    suspend fun authChangePassword(@Body body: ChangePasswordRequest): MessageResponse
+
     @Headers("Accept: application/json")
     @GET("api/auth/me")
     suspend fun me(): MeResponse
@@ -29,6 +36,13 @@ interface ApiService {
     @Headers("Accept: application/json")
     @GET("api/member/profile")
     suspend fun getMemberProfile(): MemberProfileResponse
+
+    @Headers(
+        "Accept: application/json",
+        "Content-Type: application/json"
+    )
+    @POST("api/member/change-password")
+    suspend fun memberChangePassword(@Body body: ChangePasswordRequest): MessageResponse
 
     @Headers("Accept: application/json")
     @GET("api/member/ledger")
