@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -17,7 +18,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
 import com.radiant.sms.data.Repository
 import com.radiant.sms.network.AdminMemberDetailsDto
 import com.radiant.sms.network.NetworkModule
@@ -112,29 +112,23 @@ fun AdminMemberDetailsScreen(
 
     AdminScaffold(nav = nav, title = "Update Member", hideTitle = false, showHamburger = true) {
 
-        // Make whole content scrollable so Save button is reachable
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(12.dp)
+                .padding(horizontal = 14.dp, vertical = 12.dp)
                 .navigationBarsPadding()
                 .imePadding(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
 
-            when {
-                s.loading -> {
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
-                    Spacer(Modifier.height(8.dp))
-                }
-                s.error != null -> {
-                    Text(s.error ?: "", color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(8.dp))
-                }
+            if (s.loading) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
             }
 
-            val m = s.member
+            if (s.error != null) {
+                Text(s.error ?: "", color = MaterialTheme.colorScheme.error)
+            }
 
             OutlinedTextField(
                 value = fullName,
@@ -143,7 +137,7 @@ fun AdminMemberDetailsScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = nid,
                     onValueChange = { nid = it },
@@ -158,7 +152,7 @@ fun AdminMemberDetailsScreen(
                 )
             }
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = mobile,
                     onValueChange = { mobile = it },
@@ -173,22 +167,24 @@ fun AdminMemberDetailsScreen(
                 )
             }
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = newPassword,
                     onValueChange = { newPassword = it },
-                    label = { Text("New Password (Optional)") },
-                    modifier = Modifier.weight(1f)
+                    label = { Text("New Password\n(Optional)") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = false
                 )
                 OutlinedTextField(
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it },
-                    label = { Text("Confirm Password") },
-                    modifier = Modifier.weight(1f)
+                    label = { Text("Confirm\nPassword") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = false
                 )
             }
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = nomineeName,
                     onValueChange = { nomineeName = it },
@@ -203,43 +199,33 @@ fun AdminMemberDetailsScreen(
                 )
             }
 
-            Text("Member Photo (JPG)")
-            Button(onClick = { pickMemberPhoto.launch("image/*") }) { Text("Choose file") }
+            Spacer(Modifier.height(2.dp))
 
-            m?.imageUrl?.let { url ->
-                if (memberPhotoUri == null) {
-                    AsyncImage(
-                        model = url,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(180.dp)
-                    )
-                }
-            }
+            Text("Member Photo (JPG)", style = MaterialTheme.typography.titleMedium)
+            Button(
+                onClick = { pickMemberPhoto.launch("image/*") },
+                shape = RoundedCornerShape(50),
+                modifier = Modifier
+                    .height(52.dp)
+            ) { Text("Choose file") }
 
             Spacer(Modifier.height(10.dp))
 
-            Text("Nominee Photo (JPG)")
-            Button(onClick = { pickNomineePhoto.launch("image/*") }) { Text("Choose file") }
-
-            m?.nomineePhotoUrl?.let { url ->
-                if (nomineePhotoUri == null) {
-                    AsyncImage(
-                        model = url,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(180.dp)
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(14.dp))
-
-            // Save button (will always be reachable due to scroll)
+            Text("Nominee Photo (JPG)", style = MaterialTheme.typography.titleMedium)
             Button(
-                modifier = Modifier.fillMaxWidth(),
+                onClick = { pickNomineePhoto.launch("image/*") },
+                shape = RoundedCornerShape(50),
+                modifier = Modifier
+                    .height(52.dp)
+            ) { Text("Choose file") }
+
+            Spacer(Modifier.height(18.dp))
+
+            Button(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp),
+                shape = RoundedCornerShape(50),
                 onClick = {
                     if (newPassword.isNotBlank() && newPassword != confirmPassword) {
                         Toast.makeText(context, "Password mismatch", Toast.LENGTH_SHORT).show()
@@ -251,8 +237,7 @@ fun AdminMemberDetailsScreen(
                 Text("Save Changes")
             }
 
-            // Extra bottom space so button isn't stuck at edge
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
 
             if (showUpdateConfirm) {
                 AlertDialog(
