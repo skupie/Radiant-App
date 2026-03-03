@@ -136,4 +136,35 @@ interface ApiService {
 
     @GET("api/admin/members/export/excel")
     suspend fun adminMembersExportExcel(): Response<ResponseBody>
+
+
+    // ---------- ADMIN: ACTIVITY + TEAM MEMBERS ----------
+// NOTE: These endpoints must exist on the backend. If your backend uses different routes,
+// just update the paths here (UI/Repository code will stay the same).
+
+@Headers("Accept: application/json")
+@GET("api/admin/activity")
+suspend fun adminActivity(
+    @Query("per_page") perPage: Int? = null,
+    @Query("page") page: Int? = null
+): AdminActivityResponse
+
+@Headers("Accept: application/json")
+@GET("api/admin/team-members")
+suspend fun adminTeamMembers(): AdminTeamMembersResponse
+
+@Headers("Accept: application/json")
+@POST("api/admin/team-members")
+suspend fun adminCreateTeamMember(@Body body: AdminTeamMemberUpsertRequest): MessageResponse
+
+@Headers("Accept: application/json")
+@PUT("api/admin/team-members/{id}")
+suspend fun adminUpdateTeamMember(
+    @Path("id") id: Long,
+    @Body body: AdminTeamMemberUpsertRequest
+): MessageResponse
+
+@Headers("Accept: application/json")
+@DELETE("api/admin/team-members/{id}")
+suspend fun adminDeleteTeamMember(@Path("id") id: Long): MessageResponse
 }
