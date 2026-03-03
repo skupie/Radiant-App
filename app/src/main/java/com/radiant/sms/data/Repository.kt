@@ -53,6 +53,10 @@ class Repository(private val api: ApiService) {
     suspend fun adminUpdateMember(memberId: Long, parts: List<MultipartBody.Part>): MessageResponse =
         api.adminUpdateMember(memberId, parts)
 
+    // ✅ NEW: Delete member
+    suspend fun adminDeleteMember(memberId: Long): MessageResponse =
+        api.adminDeleteMember(memberId)
+
     // keep existing screens working
     suspend fun adminDeposits(search: String? = null, perPage: Int? = null): AnyJson =
         api.adminDeposits(search = search, perPage = perPage)
@@ -76,7 +80,6 @@ class Repository(private val api: ApiService) {
             page = page
         )
 
-    // ✅ FIXED create/update: no Map wildcard
     suspend fun adminCreateDeposit(body: AdminDepositUpsertRequest): AnyJson =
         api.adminCreateDeposit(body)
 
