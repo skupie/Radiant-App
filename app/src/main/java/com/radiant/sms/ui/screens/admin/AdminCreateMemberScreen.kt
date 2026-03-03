@@ -15,12 +15,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
-import com.radiant.sms.data.NetworkModule
 import com.radiant.sms.data.Repository
+import com.radiant.sms.network.NetworkModule
 import com.radiant.sms.util.MultipartUtil
 import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
-import com.radiant.sms.network.NetworkModule
 
 class AdminCreateMemberViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = Repository(NetworkModule.api(app.applicationContext))
