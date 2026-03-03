@@ -2,7 +2,6 @@ package com.radiant.sms.ui.screens.admin
 
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember // ✅ FIX
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,9 +49,11 @@ import java.util.Locale
 fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewModel()) {
     val s by vm.state.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
-    val token = remember { TokenStore(context).getTokenSync() }
 
-    // ---- Fintech style (same family as Deposits screen) ----
+    // ✅ keep token typed as String?
+    val token: String? = remember { TokenStore(context).getTokenSync() }
+
+    // ---- Fintech style ----
     val screenBg = Color(0xFFF6F7FB)
     val cardBg = Color.White
     val subtleText = Color(0xFF6B7280)
@@ -66,7 +67,6 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
     }
 
     AdminScaffold(nav = nav, hideTitle = true, showHamburger = true) {
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -76,7 +76,7 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
         ) {
             Spacer(Modifier.height(12.dp))
 
-            // Header card
+            // Header
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = cardShape,
@@ -94,7 +94,6 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
 
                     Spacer(Modifier.height(12.dp))
 
-                    // Exports row
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -102,12 +101,13 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                         Button(
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                if (token.isNullOrBlank()) return@Button
+                                val t = token
+                                if (t.isNullOrBlank()) return@Button
                                 val url = AppConfig.BASE_URL.trimEnd('/') + "/api/admin/members/export/pdf"
                                 DownloadHelper.downloadWithAuth(
                                     context = context,
                                     url = url,
-                                    token = token,
+                                    token = t, // ✅ FIX (always String)
                                     fileName = "members-summary.pdf",
                                     mimeType = "application/pdf"
                                 )
@@ -118,12 +118,13 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                         Button(
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                if (token.isNullOrBlank()) return@Button
+                                val t = token
+                                if (t.isNullOrBlank()) return@Button
                                 val url = AppConfig.BASE_URL.trimEnd('/') + "/api/admin/members/export/excel"
                                 DownloadHelper.downloadWithAuth(
                                     context = context,
                                     url = url,
-                                    token = token,
+                                    token = t, // ✅ FIX (always String)
                                     fileName = "members-summary.xlsx",
                                     mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                                 )
@@ -134,7 +135,6 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
 
                     Spacer(Modifier.height(10.dp))
 
-                    // Create member full width
                     Button(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { nav.navigate("admin_create_member") }
@@ -161,7 +161,7 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "Results update automatically",
+                        text = "Updates automatically",
                         style = MaterialTheme.typography.bodySmall,
                         color = subtleText
                     )
@@ -180,109 +180,99 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                 Spacer(Modifier.height(8.dp))
             }
 
-            // Content
-            if (!s.isLoading && s.members.isEmpty() && s.error == null) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No members found", color = subtleText)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(s.members) { m ->
-                        val memberId = m.id ?: 0L
-                        val memberName = m.fullName ?: "Member"
-                        val email = m.email ?: "-"
-                        val share = m.share ?: 0
-                        val deposits = m.depositsCount ?: 0
-                        val totalDeposited = m.totalDeposited ?: 0.0
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(s.members) { m ->
+                    val memberId = m.id ?: 0L
+                    val name = m.fullName ?: "Member"
+                    val email = m.email ?: "-"
+                    val share = m.share ?: 0
+                    val deposits = m.depositsCount ?: 0
+                    val totalDeposited = m.totalDeposited ?: 0.0
 
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { nav.navigate("admin_member_details/$memberId") },
-                            shape = cardShape,
-                            colors = CardDefaults.cardColors(containerColor = cardBg),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                        ) {
-                            Column(Modifier.padding(16.dp)) {
-
-                                // top row: name + total deposited pill
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.Top
-                                ) {
-                                    Column(Modifier.weight(1f)) {
-                                        Text(
-                                            text = memberName,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.SemiBold,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Spacer(Modifier.height(6.dp))
-                                        Text(
-                                            text = email,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = subtleText,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-
-                                    Spacer(Modifier.width(10.dp))
-
-                                    // ✅ Total deposited (modern pill) — was missing before
-                                    Box(
-                                        modifier = Modifier
-                                            .background(
-                                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                                                shape = chipShape
-                                            )
-                                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                                    ) {
-                                        Text(
-                                            text = "BDT ${formatMoney(totalDeposited)}",
-                                            color = MaterialTheme.colorScheme.primary,
-                                            style = MaterialTheme.typography.labelLarge,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { nav.navigate("admin_member_details/$memberId") },
+                        shape = cardShape,
+                        colors = CardDefaults.cardColors(containerColor = cardBg),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        text = name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(Modifier.height(6.dp))
+                                    Text(
+                                        text = email,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = subtleText,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
 
-                                Spacer(Modifier.height(14.dp))
+                                Spacer(Modifier.width(10.dp))
 
-                                // bottom row: share + deposits
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                // ✅ Total Deposited pill badge
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                                            shape = chipShape
+                                        )
+                                        .padding(horizontal = 10.dp, vertical = 6.dp)
                                 ) {
-                                    Column {
-                                        Text("Share", style = MaterialTheme.typography.labelSmall, color = subtleText)
-                                        Text(
-                                            text = share.toString(),
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
+                                    Text(
+                                        text = "BDT ${formatMoney(totalDeposited)}",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
 
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        Text("Deposits", style = MaterialTheme.typography.labelSmall, color = subtleText)
-                                        Text(
-                                            text = deposits.toString(),
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
+                            Spacer(Modifier.height(14.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text("Share", style = MaterialTheme.typography.labelSmall, color = subtleText)
+                                    Text(
+                                        text = share.toString(),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("Deposits", style = MaterialTheme.typography.labelSmall, color = subtleText)
+                                    Text(
+                                        text = deposits.toString(),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 }
                             }
                         }
                     }
-
-                    item { Spacer(Modifier.height(16.dp)) }
                 }
+
+                item { Spacer(Modifier.height(16.dp)) }
             }
         }
     }
