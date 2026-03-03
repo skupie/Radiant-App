@@ -6,10 +6,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -44,12 +46,12 @@ import com.radiant.sms.network.AdminDepositUpsertRequest
 import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import java.time.OffsetDateTime
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,8 +65,7 @@ fun AdminDepositsScreen(nav: NavController) {
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    // Filters
-    var search by remember { mutableStateOf("") }
+    // Filters (Search removed)
     var selectedMemberId by remember { mutableStateOf<Long?>(null) }
     var selectedMemberName by remember { mutableStateOf("All members") }
     var selectedYear by remember { mutableStateOf<Int?>(null) }
@@ -99,7 +100,7 @@ fun AdminDepositsScreen(nav: NavController) {
     var formYear by remember { mutableStateOf<Int?>(null) }
     var formMonth by remember { mutableStateOf("Feb") }
     var formBaseAmount by remember { mutableStateOf("") }
-    var formType by remember { mutableStateOf("Cash") } // UI label
+    var formType by remember { mutableStateOf("Cash") }
     var formNotes by remember { mutableStateOf("") }
     var formDepositedAt by remember { mutableStateOf("") }
 
@@ -162,25 +163,21 @@ fun AdminDepositsScreen(nav: NavController) {
             ?: "-"
     }
 
-    // ✅ Format to: yyyy-MM-dd HH:mm
     fun formatDepositedAt(raw: String): String {
         if (raw.isBlank() || raw == "-") return "-"
 
         val outFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.getDefault())
 
-        // 1) ISO with Z / offset
         try {
             val odt = OffsetDateTime.parse(raw)
             return odt.toLocalDateTime().format(outFmt)
         } catch (_: Exception) {}
 
-        // 2) ISO local without offset
         try {
             val ldt = LocalDateTime.parse(raw)
             return ldt.format(outFmt)
         } catch (_: Exception) {}
 
-        // 3) "yyyy-MM-dd HH:mm:ss"
         try {
             val sdfIn = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
             val d = sdfIn.parse(raw) ?: return raw
@@ -188,7 +185,6 @@ fun AdminDepositsScreen(nav: NavController) {
             return sdfOut.format(d)
         } catch (_: Exception) {}
 
-        // 4) "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'" (Laravel style)
         try {
             val sdfIn = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", Locale.US)
             sdfIn.timeZone = java.util.TimeZone.getTimeZone("UTC")
@@ -206,7 +202,7 @@ fun AdminDepositsScreen(nav: NavController) {
             error = null
             try {
                 val resp = repo.adminDepositsList(
-                    search = search.takeIf { it.isNotBlank() },
+                    search = null, // ✅ search removed
                     memberId = selectedMemberId,
                     year = selectedYear,
                     perPage = 10,
@@ -228,7 +224,6 @@ fun AdminDepositsScreen(nav: NavController) {
     }
 
     fun resetFiltersAndReload() {
-        search = ""
         selectedMemberId = null
         selectedMemberName = "All members"
         selectedYear = null
@@ -256,7 +251,14 @@ fun AdminDepositsScreen(nav: NavController) {
     }
 
     AdminScaffold(nav = nav, hideTitle = false, showHamburger = true) {
-        Spacer(Modifier.height(8.dp))
+        // ✅ prevents header from being hidden behind status bar
+        Spacer(
+            Modifier.height(
+                WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
+            )
+        )
+
+        Spacer(Modifier.height(6.dp))
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp)) {
@@ -290,18 +292,9 @@ fun AdminDepositsScreen(nav: NavController) {
 
         Spacer(Modifier.height(12.dp))
 
+        // ✅ Filters ONLY: Member + Year
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp)) {
-                OutlinedTextField(
-                    modifier = Modifier.fillMaxWidth(),
-                    value = search,
-                    onValueChange = { search = it },
-                    label = { Text("Search") },
-                    singleLine = true
-                )
-
-                Spacer(Modifier.height(10.dp))
-
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedButton(modifier = Modifier.weight(1f), onClick = { showMemberPicker = true }) {
                         Text(selectedMemberName)
@@ -313,10 +306,10 @@ fun AdminDepositsScreen(nav: NavController) {
 
                 Spacer(Modifier.height(10.dp))
 
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedButton(modifier = Modifier.weight(1f), onClick = { resetFiltersAndReload() }) { Text("Reset") }
-                    Button(modifier = Modifier.weight(1f), onClick = { load(1) }) { Text("Apply") }
-                }
+                OutlinedButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { resetFiltersAndReload() }
+                ) { Text("Reset") }
             }
         }
 
@@ -380,7 +373,7 @@ fun AdminDepositsScreen(nav: NavController) {
             }
         }
 
-        // Member picker (filters)
+        // ✅ Member picker (APPLY IMMEDIATELY)
         if (showMemberPicker) {
             AlertDialog(
                 onDismissRequest = { showMemberPicker = false },
@@ -401,6 +394,7 @@ fun AdminDepositsScreen(nav: NavController) {
                                             selectedMemberId = m.first
                                             selectedMemberName = m.second
                                         }
+                                        load(1) // ✅ reflect immediately
                                     }
                                     .padding(vertical = 10.dp)
                             )
@@ -411,7 +405,7 @@ fun AdminDepositsScreen(nav: NavController) {
             )
         }
 
-        // Year picker (filters)
+        // ✅ Year picker (APPLY IMMEDIATELY)
         if (showYearPicker) {
             AlertDialog(
                 onDismissRequest = { showYearPicker = false },
@@ -426,6 +420,7 @@ fun AdminDepositsScreen(nav: NavController) {
                                     .clickable {
                                         selectedYear = null
                                         showYearPicker = false
+                                        load(1) // ✅ reflect immediately
                                     }
                                     .padding(vertical = 10.dp)
                             )
@@ -438,6 +433,7 @@ fun AdminDepositsScreen(nav: NavController) {
                                     .clickable {
                                         selectedYear = y
                                         showYearPicker = false
+                                        load(1) // ✅ reflect immediately
                                     }
                                     .padding(vertical = 10.dp)
                             )
@@ -473,7 +469,7 @@ fun AdminDepositsScreen(nav: NavController) {
             )
         }
 
-        // Add sheet
+        // Add sheet (unchanged save logic)
         if (showAddSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showAddSheet = false },
@@ -549,15 +545,14 @@ fun AdminDepositsScreen(nav: NavController) {
                                 else -> 2
                             }
 
-                            // ✅ IMPORTANT: type must be lowercase for Laravel validation
                             val normalizedType = formType.trim().lowercase(Locale.getDefault())
 
                             val req = AdminDepositUpsertRequest(
                                 memberId = memberId,
                                 year = year,
-                                month = monthNumber, // ✅ Int (not String)
+                                month = monthNumber,
                                 baseAmount = base,
-                                type = normalizedType, // ✅ cash/bkash/bank
+                                type = normalizedType,
                                 notes = formNotes.takeIf { it.isNotBlank() },
                                 depositedAt = formDepositedAt
                             )
