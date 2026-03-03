@@ -98,4 +98,41 @@ interface ApiService {
 
     @GET("api/admin/members/export/excel")
     suspend fun adminMembersExportExcel(): Response<ResponseBody>
+
+
+    @GET("admin/deposits")
+suspend fun adminDepositsList(
+    @Query("member_id") memberId: Int? = null,
+    @Query("year") year: Int? = null,
+    @Query("per_page") perPage: Int = 10,
+    @Query("page") page: Int = 1
+): AdminDepositsResponse
+
+@FormUrlEncoded
+@POST("admin/deposits")
+suspend fun adminCreateDeposit(
+    @Field("member_id") memberId: Int,
+    @Field("year") year: Int,
+    @Field("month") month: String,
+    @Field("base_amount") baseAmount: Double,
+    @Field("type") type: String,
+    @Field("notes") notes: String? = null
+): AnyJson
+
+@FormUrlEncoded
+@PUT("admin/deposits/{id}")
+suspend fun adminUpdateDeposit(
+    @Path("id") id: Int,
+    @Field("member_id") memberId: Int,
+    @Field("year") year: Int,
+    @Field("month") month: String,
+    @Field("base_amount") baseAmount: Double,
+    @Field("type") type: String,
+    @Field("notes") notes: String? = null
+): AnyJson
+
+@DELETE("admin/deposits/{id}")
+suspend fun adminDeleteDeposit(
+    @Path("id") id: Int
+): AnyJson
 }
