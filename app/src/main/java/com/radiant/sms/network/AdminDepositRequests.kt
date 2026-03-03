@@ -8,12 +8,13 @@ data class AdminDepositUpsertRequest(
 
     val year: Int,
 
-    // send month as number string: "1".."12"
-    val month: String,
+    // ✅ Laravel usually validates month as integer 1..12
+    val month: Int,
 
     @Json(name = "base_amount")
     val baseAmount: Double,
 
+    // ✅ must be: cash | bkash | bank (lowercase)
     val type: String,
 
     val notes: String? = null,
