@@ -6,13 +6,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -66,38 +65,35 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
     val token: String? = remember { TokenStore(context).getTokenSync() }
     val repo = remember { Repository(NetworkModule.api(context)) }
 
-    // ---- Fintech style ----
     val screenBg = Color(0xFFF6F7FB)
     val cardBg = Color.White
     val subtleText = Color(0xFF6B7280)
     val cardShape = RoundedCornerShape(22.dp)
     val chipShape = RoundedCornerShape(999.dp)
 
-    // ✅ confirmations
-    var confirmEditId by remember { mutableStateOf<Long?>(null) }
-    var confirmEditName by remember { mutableStateOf("") }
-
     var confirmDeleteId by remember { mutableStateOf<Long?>(null) }
     var confirmDeleteName by remember { mutableStateOf("") }
 
-    // ✅ Debounced instant search
+    // ✅ auto-search (no search button)
     LaunchedEffect(s.query) {
         delay(300)
         vm.loadMembers()
     }
 
+    // Keep scaffold behavior
     AdminScaffold(nav = nav, hideTitle = true, showHamburger = true) {
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(screenBg)
-                .statusBarsPadding()
+                // ✅ IMPORTANT: remove statusBarsPadding() to avoid huge top gap
+                // and use a small top padding so card sits higher but never gets cropped
                 .padding(horizontal = 16.dp)
+                .padding(top = 8.dp)
         ) {
-            Spacer(Modifier.height(12.dp))
+            // ✅ tighter spacing so the top card is nearer to the top
+            Spacer(Modifier.height(6.dp))
 
-            // Header card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = cardShape,
@@ -122,8 +118,7 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                         Button(
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                val t = token
-                                if (t.isNullOrBlank()) return@Button
+                                val t = token ?: return@Button
                                 val url = AppConfig.BASE_URL.trimEnd('/') + "/api/admin/members/export/pdf"
                                 DownloadHelper.downloadWithAuth(
                                     context = context,
@@ -134,13 +129,12 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                                 )
                                 Toast.makeText(context, "Downloading PDF...", Toast.LENGTH_SHORT).show()
                             }
-                        ) { Text("All Members PDF") }
+                        ) { Text("All Members\nPDF") }
 
                         Button(
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                val t = token
-                                if (t.isNullOrBlank()) return@Button
+                                val t = token ?: return@Button
                                 val url = AppConfig.BASE_URL.trimEnd('/') + "/api/admin/members/export/excel"
                                 DownloadHelper.downloadWithAuth(
                                     context = context,
@@ -151,7 +145,7 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                                 )
                                 Toast.makeText(context, "Downloading Excel...", Toast.LENGTH_SHORT).show()
                             }
-                        ) { Text("All Members Excel") }
+                        ) { Text("All Members\nExcel") }
                     }
 
                     Spacer(Modifier.height(10.dp))
@@ -165,7 +159,6 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
 
             Spacer(Modifier.height(12.dp))
 
-            // Search (no button)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = cardShape,
@@ -218,8 +211,8 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                         Column(
                             Modifier
                                 .clickable {
-                                    confirmEditId = memberId
-                                    confirmEditName = name
+                                    // open edit directly
+                                    nav.navigate("admin_member_details/$memberId")
                                 }
                                 .padding(16.dp)
                         ) {
@@ -297,26 +290,6 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                 item { Spacer(Modifier.height(16.dp)) }
             }
 
-            // ✅ confirm update
-            if (confirmEditId != null) {
-                AlertDialog(
-                    onDismissRequest = { confirmEditId = null },
-                    title = { Text("Update member?") },
-                    text = { Text("Do you want to update “$confirmEditName”?") },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            val id = confirmEditId ?: return@TextButton
-                            confirmEditId = null
-                            nav.navigate("admin_member_details/$id")
-                        }) { Text("Yes") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { confirmEditId = null }) { Text("Cancel") }
-                    }
-                )
-            }
-
-            // ✅ confirm delete
             if (confirmDeleteId != null) {
                 AlertDialog(
                     onDismissRequest = { confirmDeleteId = null },
@@ -326,7 +299,6 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                         TextButton(onClick = {
                             val id = confirmDeleteId ?: return@TextButton
                             confirmDeleteId = null
-
                             scope.launch {
                                 try {
                                     repo.adminDeleteMember(id)
