@@ -60,4 +60,34 @@ class Repository(private val api: ApiService) {
 
     suspend fun adminDueSummary(search: String? = null, perPage: Int? = null): AnyJson =
         api.adminDueSummary(search = search, perPage = perPage)
+
+        //-----------Deposit ------------
+        suspend fun adminDepositsList(
+    memberId: Int? = null,
+    year: Int? = null,
+    perPage: Int = 10,
+    page: Int = 1
+) = api.adminDepositsList(memberId, year, perPage, page)
+
+suspend fun adminCreateDeposit(
+    memberId: Int,
+    year: Int,
+    month: String,
+    baseAmount: Double,
+    type: String,
+    notes: String?
+) = api.adminCreateDeposit(memberId, year, month, baseAmount, type, notes)
+
+suspend fun adminUpdateDeposit(
+    id: Int,
+    memberId: Int,
+    year: Int,
+    month: String,
+    baseAmount: Double,
+    type: String,
+    notes: String?
+) = api.adminUpdateDeposit(id, memberId, year, month, baseAmount, type, notes)
+
+suspend fun adminDeleteDeposit(id: Int) =
+    api.adminDeleteDeposit(id)
 }
