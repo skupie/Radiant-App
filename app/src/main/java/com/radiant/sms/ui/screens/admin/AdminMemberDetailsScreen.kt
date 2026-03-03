@@ -6,6 +6,8 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -106,71 +108,136 @@ fun AdminMemberDetailsScreen(
         }
     }
 
+    val scrollState = rememberScrollState()
+
     AdminScaffold(nav = nav, title = "Update Member", hideTitle = false, showHamburger = true) {
-        when {
-            s.loading -> {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-                Spacer(Modifier.height(12.dp))
-            }
-            s.error != null -> {
-                Text(s.error ?: "", color = MaterialTheme.colorScheme.error)
-                Spacer(Modifier.height(12.dp))
-            }
-        }
 
-        val m = s.member
+        // Make whole content scrollable so Save button is reachable
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(12.dp)
+                .navigationBarsPadding()
+                .imePadding(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
 
-        Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedTextField(fullName, { fullName = it }, label = { Text("Full Name") }, modifier = Modifier.fillMaxWidth())
+            when {
+                s.loading -> {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                }
+                s.error != null -> {
+                    Text(s.error ?: "", color = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+
+            val m = s.member
+
+            OutlinedTextField(
+                value = fullName,
+                onValueChange = { fullName = it },
+                label = { Text("Full Name") },
+                modifier = Modifier.fillMaxWidth()
+            )
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(nid, { nid = it }, label = { Text("NID") }, modifier = Modifier.weight(1f))
-                OutlinedTextField(email, { email = it }, label = { Text("Email") }, modifier = Modifier.weight(1f))
-            }
-
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(mobile, { mobile = it }, label = { Text("Mobile Number") }, modifier = Modifier.weight(1f))
-                OutlinedTextField(share, { share = it }, label = { Text("Share Count") }, modifier = Modifier.weight(1f))
+                OutlinedTextField(
+                    value = nid,
+                    onValueChange = { nid = it },
+                    label = { Text("NID") },
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
-                    newPassword,
-                    { newPassword = it },
+                    value = mobile,
+                    onValueChange = { mobile = it },
+                    label = { Text("Mobile Number") },
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = share,
+                    onValueChange = { share = it },
+                    label = { Text("Share Count") },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = { newPassword = it },
                     label = { Text("New Password (Optional)") },
                     modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
-                    confirmPassword,
-                    { confirmPassword = it },
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
                     label = { Text("Confirm Password") },
                     modifier = Modifier.weight(1f)
                 )
             }
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(nomineeName, { nomineeName = it }, label = { Text("Nominee Name") }, modifier = Modifier.weight(1f))
-                OutlinedTextField(nomineeNid, { nomineeNid = it }, label = { Text("Nominee NID") }, modifier = Modifier.weight(1f))
+                OutlinedTextField(
+                    value = nomineeName,
+                    onValueChange = { nomineeName = it },
+                    label = { Text("Nominee Name") },
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = nomineeNid,
+                    onValueChange = { nomineeNid = it },
+                    label = { Text("Nominee NID") },
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             Text("Member Photo (JPG)")
             Button(onClick = { pickMemberPhoto.launch("image/*") }) { Text("Choose file") }
+
             m?.imageUrl?.let { url ->
                 if (memberPhotoUri == null) {
-                    AsyncImage(model = url, contentDescription = null, modifier = Modifier.height(120.dp))
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                    )
                 }
             }
+
+            Spacer(Modifier.height(10.dp))
 
             Text("Nominee Photo (JPG)")
             Button(onClick = { pickNomineePhoto.launch("image/*") }) { Text("Choose file") }
+
             m?.nomineePhotoUrl?.let { url ->
                 if (nomineePhotoUri == null) {
-                    AsyncImage(model = url, contentDescription = null, modifier = Modifier.height(120.dp))
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                    )
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(14.dp))
 
+            // Save button (will always be reachable due to scroll)
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
@@ -183,6 +250,9 @@ fun AdminMemberDetailsScreen(
             ) {
                 Text("Save Changes")
             }
+
+            // Extra bottom space so button isn't stuck at edge
+            Spacer(Modifier.height(24.dp))
 
             if (showUpdateConfirm) {
                 AlertDialog(
@@ -211,9 +281,7 @@ fun AdminMemberDetailsScreen(
 
                             vm.update(memberId, parts) {
                                 Toast.makeText(context, "Saved", Toast.LENGTH_SHORT).show()
-                                // Re-render updated data immediately
                                 vm.load(memberId)
-                                // Also refresh admin list when user goes back
                                 nav.previousBackStackEntry?.savedStateHandle?.set("members_refresh", true)
                             }
                         }) { Text("Confirm") }
