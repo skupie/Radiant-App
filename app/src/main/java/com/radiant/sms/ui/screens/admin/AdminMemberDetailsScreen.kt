@@ -15,15 +15,14 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
-import com.radiant.sms.data.NetworkModule
 import com.radiant.sms.data.Repository
 import com.radiant.sms.network.AdminMemberDetailsDto
+import com.radiant.sms.network.NetworkModule
 import com.radiant.sms.util.MultipartUtil
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
-import com.radiant.sms.network.NetworkModule
 
 data class AdminMemberDetailsState(
     val loading: Boolean = true,
@@ -92,7 +91,6 @@ fun AdminMemberDetailsScreen(
         nomineePhotoUri = uri
     }
 
-    // populate once loaded
     LaunchedEffect(s.member) {
         s.member?.let { m ->
             fullName = m.fullName ?: ""
@@ -121,10 +119,12 @@ fun AdminMemberDetailsScreen(
 
         Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             OutlinedTextField(fullName, { fullName = it }, label = { Text("Full Name") }, modifier = Modifier.fillMaxWidth())
+
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(nid, { nid = it }, label = { Text("NID") }, modifier = Modifier.weight(1f))
                 OutlinedTextField(email, { email = it }, label = { Text("Email") }, modifier = Modifier.weight(1f))
             }
+
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(mobile, { mobile = it }, label = { Text("Mobile Number") }, modifier = Modifier.weight(1f))
                 OutlinedTextField(share, { share = it }, label = { Text("Share Count") }, modifier = Modifier.weight(1f))
