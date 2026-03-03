@@ -163,7 +163,6 @@ private fun AdminMemberCard(
 ) {
     val shareCount = member.share ?: 0
     val depositCount = member.depositsCount ?: 0
-    val depositAmount = member.totalDeposit ?: 0.0
 
     Card(
         modifier = Modifier
@@ -203,13 +202,6 @@ private fun AdminMemberCard(
                     text = "Deposits: $depositCount",
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleLarge
-                )
-
-                Text(
-                    text = "৳ ${formatMoney(depositAmount)}",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
