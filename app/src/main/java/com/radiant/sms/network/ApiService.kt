@@ -77,6 +77,14 @@ interface ApiService {
         @Part parts: List<MultipartBody.Part>
     ): MessageResponse
 
+    // ✅ NEW: Delete member
+    @Headers("Accept: application/json")
+    @DELETE("api/admin/members/{member}")
+    suspend fun adminDeleteMember(
+        @Path("member") memberId: Long
+    ): MessageResponse
+
+
     // ✅ Existing (keep — used by older screens)
     @Headers("Accept: application/json")
     @GET("api/admin/deposits")
@@ -103,14 +111,12 @@ interface ApiService {
         @Query("page") page: Int = 1
     ): AdminDepositsResponse
 
-    // ✅ Create deposit (FIXED: use request class, not Map/Wildcard)
     @Headers("Accept: application/json")
     @POST("api/admin/deposits")
     suspend fun adminCreateDeposit(
         @Body body: AdminDepositUpsertRequest
     ): AnyJson
 
-    // ✅ Update deposit (FIXED)
     @Headers("Accept: application/json")
     @PUT("api/admin/deposits/{id}")
     suspend fun adminUpdateDeposit(
@@ -118,7 +124,6 @@ interface ApiService {
         @Body body: AdminDepositUpsertRequest
     ): AnyJson
 
-    // ✅ Delete deposit
     @Headers("Accept: application/json")
     @DELETE("api/admin/deposits/{id}")
     suspend fun adminDeleteDeposit(
