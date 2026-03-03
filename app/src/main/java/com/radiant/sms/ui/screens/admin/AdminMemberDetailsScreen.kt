@@ -12,8 +12,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.radiant.sms.data.Repository
 import com.radiant.sms.network.AdminMemberDetailsDto
@@ -62,7 +63,7 @@ class AdminMemberDetailsViewModel(app: Application) : AndroidViewModel(app) {
 
 @Composable
 fun AdminMemberDetailsScreen(
-    nav: androidx.navigation.NavController,
+    nav: NavController,
     memberId: Long,
     vm: AdminMemberDetailsViewModel = viewModel()
 ) {
@@ -83,6 +84,8 @@ fun AdminMemberDetailsScreen(
 
     var memberPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var nomineePhotoUri by remember { mutableStateOf<Uri?>(null) }
+
+    var showUpdateConfirm by remember { mutableStateOf(false) }
 
     val pickMemberPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         memberPhotoUri = uri
@@ -151,10 +154,7 @@ fun AdminMemberDetailsScreen(
             }
 
             Text("Member Photo (JPG)")
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(onClick = { pickMemberPhoto.launch("image/*") }) { Text("Choose file") }
-                Spacer(Modifier.weight(1f))
-            }
+            Button(onClick = { pickMemberPhoto.launch("image/*") }) { Text("Choose file") }
             m?.imageUrl?.let { url ->
                 if (memberPhotoUri == null) {
                     AsyncImage(model = url, contentDescription = null, modifier = Modifier.height(120.dp))
@@ -162,10 +162,7 @@ fun AdminMemberDetailsScreen(
             }
 
             Text("Nominee Photo (JPG)")
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(onClick = { pickNomineePhoto.launch("image/*") }) { Text("Choose file") }
-                Spacer(Modifier.weight(1f))
-            }
+            Button(onClick = { pickNomineePhoto.launch("image/*") }) { Text("Choose file") }
             m?.nomineePhotoUrl?.let { url ->
                 if (nomineePhotoUri == null) {
                     AsyncImage(model = url, contentDescription = null, modifier = Modifier.height(120.dp))
@@ -181,31 +178,50 @@ fun AdminMemberDetailsScreen(
                         Toast.makeText(context, "Password mismatch", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-
-                    val parts = mutableListOf<MultipartBody.Part>()
-
-                    parts += MultipartUtil.textPart("full_name", fullName)
-                    parts += MultipartUtil.textPart("nid", nid)
-                    parts += MultipartUtil.textPart("email", email)
-                    parts += MultipartUtil.textPart("mobile_number", mobile)
-                    parts += MultipartUtil.textPart("nominee_name", nomineeName)
-                    parts += MultipartUtil.textPart("nominee_nid", nomineeNid)
-                    parts += MultipartUtil.textPart("share", share)
-
-                    if (newPassword.isNotBlank()) {
-                        parts += MultipartUtil.textPart("password", newPassword)
-                    }
-
-                    MultipartUtil.filePart(context, "image", memberPhotoUri)?.let { parts += it }
-                    MultipartUtil.filePart(context, "nominee_photo", nomineePhotoUri)?.let { parts += it }
-
-                    vm.update(memberId, parts) {
-                        Toast.makeText(context, "Saved", Toast.LENGTH_SHORT).show()
-                        vm.load(memberId)
-                    }
+                    showUpdateConfirm = true
                 }
             ) {
                 Text("Save Changes")
+            }
+
+            if (showUpdateConfirm) {
+                AlertDialog(
+                    onDismissRequest = { showUpdateConfirm = false },
+                    title = { Text("Confirm Update") },
+                    text = { Text("Save these changes for this member?") },
+                    confirmButton = {
+                        Button(onClick = {
+                            showUpdateConfirm = false
+
+                            val parts = mutableListOf<MultipartBody.Part>()
+                            parts += MultipartUtil.textPart("full_name", fullName)
+                            parts += MultipartUtil.textPart("nid", nid)
+                            parts += MultipartUtil.textPart("email", email)
+                            parts += MultipartUtil.textPart("mobile_number", mobile)
+                            parts += MultipartUtil.textPart("nominee_name", nomineeName)
+                            parts += MultipartUtil.textPart("nominee_nid", nomineeNid)
+                            parts += MultipartUtil.textPart("share", share)
+
+                            if (newPassword.isNotBlank()) {
+                                parts += MultipartUtil.textPart("password", newPassword)
+                            }
+
+                            MultipartUtil.filePart(context, "image", memberPhotoUri)?.let { parts += it }
+                            MultipartUtil.filePart(context, "nominee_photo", nomineePhotoUri)?.let { parts += it }
+
+                            vm.update(memberId, parts) {
+                                Toast.makeText(context, "Saved", Toast.LENGTH_SHORT).show()
+                                // Re-render updated data immediately
+                                vm.load(memberId)
+                                // Also refresh admin list when user goes back
+                                nav.previousBackStackEntry?.savedStateHandle?.set("members_refresh", true)
+                            }
+                        }) { Text("Confirm") }
+                    },
+                    dismissButton = {
+                        OutlinedButton(onClick = { showUpdateConfirm = false }) { Text("Cancel") }
+                    }
+                )
             }
         }
     }
