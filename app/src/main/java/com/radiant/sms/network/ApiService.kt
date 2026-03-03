@@ -53,7 +53,7 @@ interface ApiService {
     suspend fun adminMembers(
         @Query("search") search: String? = null,
         @Query("per_page") perPage: Int? = null,
-        @Query("page") page: Int? = null // ✅ add page for auto-fetch
+        @Query("page") page: Int? = null
     ): AdminMembersResponse
 
     @Headers("Accept: application/json")
@@ -77,7 +77,7 @@ interface ApiService {
         @Part parts: List<MultipartBody.Part>
     ): MessageResponse
 
-    // Keep these (your app already uses them)
+    // ✅ Existing (keep — used by older screens)
     @Headers("Accept: application/json")
     @GET("api/admin/deposits")
     suspend fun adminDeposits(
@@ -92,47 +92,43 @@ interface ApiService {
         @Query("per_page") perPage: Int? = null
     ): AnyJson
 
+    // ✅ New (typed + filters + pagination + summary total)
+    @Headers("Accept: application/json")
+    @GET("api/admin/deposits")
+    suspend fun adminDepositsList(
+        @Query("search") search: String? = null,
+        @Query("member_id") memberId: Long? = null,
+        @Query("year") year: Int? = null,
+        @Query("per_page") perPage: Int = 10,
+        @Query("page") page: Int = 1
+    ): AdminDepositsResponse
+
+    // ✅ Create deposit
+    @Headers("Accept: application/json")
+    @POST("api/admin/deposits")
+    suspend fun adminCreateDeposit(
+        @Body body: AnyJson
+    ): AnyJson
+
+    // ✅ Update deposit
+    @Headers("Accept: application/json")
+    @PUT("api/admin/deposits/{id}")
+    suspend fun adminUpdateDeposit(
+        @Path("id") id: Long,
+        @Body body: AnyJson
+    ): AnyJson
+
+    // ✅ Delete deposit
+    @Headers("Accept: application/json")
+    @DELETE("api/admin/deposits/{id}")
+    suspend fun adminDeleteDeposit(
+        @Path("id") id: Long
+    ): AnyJson
+
     // Exports
     @GET("api/admin/members/export/pdf")
     suspend fun adminMembersExportPdf(): Response<ResponseBody>
 
     @GET("api/admin/members/export/excel")
     suspend fun adminMembersExportExcel(): Response<ResponseBody>
-
-
-    @GET("admin/deposits")
-suspend fun adminDepositsList(
-    @Query("member_id") memberId: Int? = null,
-    @Query("year") year: Int? = null,
-    @Query("per_page") perPage: Int = 10,
-    @Query("page") page: Int = 1
-): AdminDepositsResponse
-
-@FormUrlEncoded
-@POST("admin/deposits")
-suspend fun adminCreateDeposit(
-    @Field("member_id") memberId: Int,
-    @Field("year") year: Int,
-    @Field("month") month: String,
-    @Field("base_amount") baseAmount: Double,
-    @Field("type") type: String,
-    @Field("notes") notes: String? = null
-): AnyJson
-
-@FormUrlEncoded
-@PUT("admin/deposits/{id}")
-suspend fun adminUpdateDeposit(
-    @Path("id") id: Int,
-    @Field("member_id") memberId: Int,
-    @Field("year") year: Int,
-    @Field("month") month: String,
-    @Field("base_amount") baseAmount: Double,
-    @Field("type") type: String,
-    @Field("notes") notes: String? = null
-): AnyJson
-
-@DELETE("admin/deposits/{id}")
-suspend fun adminDeleteDeposit(
-    @Path("id") id: Int
-): AnyJson
 }
