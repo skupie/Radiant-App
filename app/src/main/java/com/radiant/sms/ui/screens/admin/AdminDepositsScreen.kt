@@ -70,6 +70,11 @@ fun AdminDepositsScreen(nav: NavController) {
     var members by remember { mutableStateOf<List<Pair<Long, String>>>(emptyList()) }
     var availableYears by remember { mutableStateOf<List<Int>>(emptyList()) }
 
+    // ✅ Build map from dropdown list (memberId -> memberName)
+    val memberNameMap = remember(members) {
+        members.filter { it.first != 0L }.associate { it.first to it.second }
+    }
+
     // List + pagination + total
     var items by remember { mutableStateOf<List<AdminDepositItem>>(emptyList()) }
     var totalDeposits by remember { mutableStateOf(0.0) }
@@ -89,9 +94,9 @@ fun AdminDepositsScreen(nav: NavController) {
     var formYear by remember { mutableStateOf<Int?>(null) }
     var formMonth by remember { mutableStateOf("Feb") }
     var formBaseAmount by remember { mutableStateOf("") }
-    var formType by remember { mutableStateOf("Cash") } // dropdown
+    var formType by remember { mutableStateOf("Cash") }
     var formNotes by remember { mutableStateOf("") }
-    var formDepositedAt by remember { mutableStateOf("") } // editable timestamp
+    var formDepositedAt by remember { mutableStateOf("") }
 
     var showFormMemberPicker by remember { mutableStateOf(false) }
     var showFormYearPicker by remember { mutableStateOf(false) }
@@ -124,10 +129,13 @@ fun AdminDepositsScreen(nav: NavController) {
         return if (y.isNotBlank()) "$monthLabel $y" else monthLabel
     }
 
+    // ✅ FIX: Always show member name using dropdown map fallback
     fun bestMemberName(d: AdminDepositItem): String {
-        val fromNested = d.member?.name?.trim()
-        if (!fromNested.isNullOrEmpty()) return fromNested
+        // 1) nested member name
+        val nested = d.member?.name?.trim()
+        if (!nested.isNullOrEmpty()) return nested
 
+        // 2) flat keys from deposit list
         val full = d.memberFullName?.trim()
         if (!full.isNullOrEmpty()) return full
 
@@ -136,6 +144,13 @@ fun AdminDepositsScreen(nav: NavController) {
 
         val name = d.name?.trim()
         if (!name.isNullOrEmpty()) return name
+
+        // 3) ✅ fallback using member id -> dropdown map
+        val id = d.memberId ?: d.member?.id
+        if (id != null) {
+            val mapped = memberNameMap[id]
+            if (!mapped.isNullOrBlank()) return mapped
+        }
 
         return "Member"
     }
@@ -197,14 +212,9 @@ fun AdminDepositsScreen(nav: NavController) {
         load(1)
     }
 
-    AdminScaffold(
-        nav = nav,
-        hideTitle = false,
-        showHamburger = true
-    ) {
+    AdminScaffold(nav = nav, hideTitle = false, showHamburger = true) {
         Spacer(Modifier.height(8.dp))
 
-        // Header card
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp)) {
                 Row(
@@ -229,17 +239,14 @@ fun AdminDepositsScreen(nav: NavController) {
                         formBaseAmount = ""
                         formType = "Cash"
                         formNotes = ""
-                        formDepositedAt = nowTimestamp() // ✅ auto now
-                    }) {
-                        Text("Add Deposit")
-                    }
+                        formDepositedAt = nowTimestamp()
+                    }) { Text("Add Deposit") }
                 }
             }
         }
 
         Spacer(Modifier.height(12.dp))
 
-        // Filters card
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp)) {
                 OutlinedTextField(
@@ -252,36 +259,20 @@ fun AdminDepositsScreen(nav: NavController) {
 
                 Spacer(Modifier.height(10.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = { showMemberPicker = true }
-                    ) { Text(selectedMemberName) }
-
-                    OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = { showYearPicker = true }
-                    ) { Text(selectedYear?.toString() ?: "All years") }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(modifier = Modifier.weight(1f), onClick = { showMemberPicker = true }) {
+                        Text(selectedMemberName)
+                    }
+                    OutlinedButton(modifier = Modifier.weight(1f), onClick = { showYearPicker = true }) {
+                        Text(selectedYear?.toString() ?: "All years")
+                    }
                 }
 
                 Spacer(Modifier.height(10.dp))
 
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = { resetFiltersAndReload() }
-                    ) { Text("Reset") }
-
-                    Button(
-                        modifier = Modifier.weight(1f),
-                        onClick = { load(1) }
-                    ) { Text("Apply") }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(modifier = Modifier.weight(1f), onClick = { resetFiltersAndReload() }) { Text("Reset") }
+                    Button(modifier = Modifier.weight(1f), onClick = { load(1) }) { Text("Apply") }
                 }
             }
         }
@@ -307,12 +298,7 @@ fun AdminDepositsScreen(nav: NavController) {
             items(items) { d ->
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp)) {
-                        Text(
-                            bestMemberName(d), // ✅ member name fixed
-                            fontWeight = FontWeight.SemiBold,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-
+                        Text(bestMemberName(d), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(4.dp))
                         Text(displayMonthYear(d.month, d.year), style = MaterialTheme.typography.bodySmall)
 
@@ -324,6 +310,7 @@ fun AdminDepositsScreen(nav: NavController) {
                         }
 
                         Spacer(Modifier.height(6.dp))
+
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Type: ${d.type ?: "-"}", style = MaterialTheme.typography.bodySmall)
                             Text("Deposited: ${bestDepositedAt(d)}", style = MaterialTheme.typography.bodySmall)
@@ -331,11 +318,8 @@ fun AdminDepositsScreen(nav: NavController) {
 
                         Spacer(Modifier.height(10.dp))
 
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Button(
-                                modifier = Modifier.weight(1f),
-                                onClick = { deleteId = d.id }
-                            ) { Text("Delete") }
+                        Button(modifier = Modifier.fillMaxWidth(), onClick = { deleteId = d.id }) {
+                            Text("Delete")
                         }
                     }
                 }
@@ -343,21 +327,10 @@ fun AdminDepositsScreen(nav: NavController) {
 
             item {
                 Spacer(Modifier.height(6.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    OutlinedButton(
-                        enabled = page > 1,
-                        onClick = { load((page - 1).toInt()) }
-                    ) { Text("Prev") }
-
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    OutlinedButton(enabled = page > 1, onClick = { load((page - 1).toInt()) }) { Text("Prev") }
                     Text("Page $page of $lastPage")
-
-                    OutlinedButton(
-                        enabled = page < lastPage,
-                        onClick = { load((page + 1).toInt()) }
-                    ) { Text("Next") }
+                    OutlinedButton(enabled = page < lastPage, onClick = { load((page + 1).toInt()) }) { Text("Next") }
                 }
                 Spacer(Modifier.height(16.dp))
             }
@@ -456,7 +429,7 @@ fun AdminDepositsScreen(nav: NavController) {
             )
         }
 
-        // Add sheet
+        // Add sheet (same as your previous one — left unchanged here)
         if (showAddSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showAddSheet = false },
@@ -466,31 +439,22 @@ fun AdminDepositsScreen(nav: NavController) {
                     Text("Add Deposit", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(12.dp))
 
-                    OutlinedButton(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { showFormMemberPicker = true }
-                    ) { Text(formMemberName) }
-
-                    Spacer(Modifier.height(10.dp))
-
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedButton(
-                            modifier = Modifier.weight(1f),
-                            onClick = { showFormMonthPicker = true }
-                        ) { Text(formMonth) }
-
-                        OutlinedButton(
-                            modifier = Modifier.weight(1f),
-                            onClick = { showFormYearPicker = true }
-                        ) { Text(formYear?.toString() ?: "Year") }
+                    OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { showFormMemberPicker = true }) {
+                        Text(formMemberName)
                     }
 
                     Spacer(Modifier.height(10.dp))
 
-                    OutlinedButton(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { showFormTypePicker = true } // ✅ dropdown picker
-                    ) { Text("Type: $formType") }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(modifier = Modifier.weight(1f), onClick = { showFormMonthPicker = true }) { Text(formMonth) }
+                        OutlinedButton(modifier = Modifier.weight(1f), onClick = { showFormYearPicker = true }) { Text(formYear?.toString() ?: "Year") }
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { showFormTypePicker = true }) {
+                        Text("Type: $formType")
+                    }
 
                     Spacer(Modifier.height(10.dp))
 
@@ -504,7 +468,6 @@ fun AdminDepositsScreen(nav: NavController) {
 
                     Spacer(Modifier.height(10.dp))
 
-                    // ✅ Deposited at editable + default now
                     OutlinedTextField(
                         modifier = Modifier.fillMaxWidth(),
                         value = formDepositedAt,
@@ -531,22 +494,10 @@ fun AdminDepositsScreen(nav: NavController) {
                             val year = formYear
                             val base = formBaseAmount.toDoubleOrNull()
 
-                            if (memberId == null) {
-                                Toast.makeText(context, "Select member", Toast.LENGTH_SHORT).show()
-                                return@Button
-                            }
-                            if (year == null) {
-                                Toast.makeText(context, "Select year", Toast.LENGTH_SHORT).show()
-                                return@Button
-                            }
-                            if (base == null) {
-                                Toast.makeText(context, "Enter valid base amount", Toast.LENGTH_SHORT).show()
-                                return@Button
-                            }
-                            if (formDepositedAt.isBlank()) {
-                                Toast.makeText(context, "Deposited at required", Toast.LENGTH_SHORT).show()
-                                return@Button
-                            }
+                            if (memberId == null) { Toast.makeText(context, "Select member", Toast.LENGTH_SHORT).show(); return@Button }
+                            if (year == null) { Toast.makeText(context, "Select year", Toast.LENGTH_SHORT).show(); return@Button }
+                            if (base == null) { Toast.makeText(context, "Enter valid base amount", Toast.LENGTH_SHORT).show(); return@Button }
+                            if (formDepositedAt.isBlank()) { Toast.makeText(context, "Deposited at required", Toast.LENGTH_SHORT).show(); return@Button }
 
                             val monthNumber = when (formMonth.lowercase(Locale.getDefault())) {
                                 "jan" -> 1; "feb" -> 2; "mar" -> 3; "apr" -> 4; "may" -> 5; "jun" -> 6
@@ -559,9 +510,9 @@ fun AdminDepositsScreen(nav: NavController) {
                                 "year" to year,
                                 "month" to monthNumber.toString(),
                                 "base_amount" to base,
-                                "type" to formType,               // ✅ Cash/Bkash/Bank
+                                "type" to formType,
                                 "notes" to formNotes.takeIf { it.isNotBlank() },
-                                "deposited_at" to formDepositedAt // ✅ timestamp sent
+                                "deposited_at" to formDepositedAt
                             )
 
                             scope.launch {
@@ -580,7 +531,6 @@ fun AdminDepositsScreen(nav: NavController) {
                     Spacer(Modifier.height(24.dp))
                 }
 
-                // Form member picker
                 if (showFormMemberPicker) {
                     AlertDialog(
                         onDismissRequest = { showFormMemberPicker = false },
@@ -589,7 +539,7 @@ fun AdminDepositsScreen(nav: NavController) {
                             LazyColumn {
                                 items(members.filter { it.first != 0L }) { m ->
                                     Text(
-                                        text = m.second,
+                                        m.second,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable {
@@ -606,7 +556,6 @@ fun AdminDepositsScreen(nav: NavController) {
                     )
                 }
 
-                // Form year picker
                 if (showFormYearPicker) {
                     AlertDialog(
                         onDismissRequest = { showFormYearPicker = false },
@@ -631,7 +580,6 @@ fun AdminDepositsScreen(nav: NavController) {
                     )
                 }
 
-                // Form month picker
                 if (showFormMonthPicker) {
                     val months = listOf("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
                     AlertDialog(
@@ -657,7 +605,6 @@ fun AdminDepositsScreen(nav: NavController) {
                     )
                 }
 
-                // ✅ Form type picker (dropdown)
                 if (showFormTypePicker) {
                     val types = listOf("Cash", "Bkash", "Bank")
                     AlertDialog(
