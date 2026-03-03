@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
@@ -27,6 +26,7 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -131,10 +131,13 @@ fun AdminScaffold(
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
+            // keep contentWindowInsets disabled like before (drawer + custom paddings),
+            // but FIX the TopAppBar inset handling
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 TopAppBar(
-                    windowInsets = WindowInsets(0, 0, 0, 0),
+                    // ✅ FIX: let TopAppBar apply status bar insets properly
+                    windowInsets = TopAppBarDefaults.windowInsets,
                     title = { if (!hideTitle) Text(title) },
                     navigationIcon = {
                         if (showHamburger) {
@@ -145,11 +148,12 @@ fun AdminScaffold(
                     }
                 )
             }
-        ) {
+        ) { innerPadding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .statusBarsPadding()
+                    // ✅ FIX: apply scaffold padding (includes top bar height)
+                    .padding(innerPadding)
                     .padding(horizontal = 16.dp)
             ) {
                 content()
