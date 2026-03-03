@@ -40,10 +40,11 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.Repository
 import com.radiant.sms.network.AdminDepositItem
-import com.radiant.sms.network.AnyJson
+import com.radiant.sms.network.AdminDepositUpsertRequest
 import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -53,6 +54,8 @@ fun AdminDepositsScreen(nav: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val repo = remember { Repository(NetworkModule.api(context)) }
+
+    val currentYear = remember { Calendar.getInstance().get(Calendar.YEAR) }
 
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -129,13 +132,11 @@ fun AdminDepositsScreen(nav: NavController) {
         return if (y.isNotBlank()) "$monthLabel $y" else monthLabel
     }
 
-    // ✅ FIX: Always show member name using dropdown map fallback
+    // ✅ Always show member name using dropdown map fallback
     fun bestMemberName(d: AdminDepositItem): String {
-        // 1) nested member name
         val nested = d.member?.name?.trim()
         if (!nested.isNullOrEmpty()) return nested
 
-        // 2) flat keys from deposit list
         val full = d.memberFullName?.trim()
         if (!full.isNullOrEmpty()) return full
 
@@ -145,7 +146,6 @@ fun AdminDepositsScreen(nav: NavController) {
         val name = d.name?.trim()
         if (!name.isNullOrEmpty()) return name
 
-        // 3) ✅ fallback using member id -> dropdown map
         val id = d.memberId ?: d.member?.id
         if (id != null) {
             val mapped = memberNameMap[id]
@@ -212,6 +212,12 @@ fun AdminDepositsScreen(nav: NavController) {
         load(1)
     }
 
+    // ✅ Year options: include currentYear and currentYear+1 always
+    val filterYearOptions = remember(availableYears, currentYear) {
+        (availableYears + currentYear + (currentYear + 1)).distinct().sorted()
+    }
+    val formYearOptions = filterYearOptions
+
     AdminScaffold(nav = nav, hideTitle = false, showHamburger = true) {
         Spacer(Modifier.height(8.dp))
 
@@ -234,7 +240,7 @@ fun AdminDepositsScreen(nav: NavController) {
                         showAddSheet = true
                         formMemberId = null
                         formMemberName = "Select member"
-                        formYear = selectedYear
+                        formYear = selectedYear ?: currentYear
                         formMonth = "Feb"
                         formBaseAmount = ""
                         formType = "Cash"
@@ -367,7 +373,7 @@ fun AdminDepositsScreen(nav: NavController) {
             )
         }
 
-        // Year picker (filters)
+        // ✅ Year picker (filters) — now includes currentYear+1
         if (showYearPicker) {
             AlertDialog(
                 onDismissRequest = { showYearPicker = false },
@@ -386,7 +392,7 @@ fun AdminDepositsScreen(nav: NavController) {
                                     .padding(vertical = 10.dp)
                             )
                         }
-                        items(availableYears) { y ->
+                        items(filterYearOptions) { y ->
                             Text(
                                 y.toString(),
                                 modifier = Modifier
@@ -429,7 +435,7 @@ fun AdminDepositsScreen(nav: NavController) {
             )
         }
 
-        // Add sheet (same as your previous one — left unchanged here)
+        // Add sheet
         if (showAddSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showAddSheet = false },
@@ -505,19 +511,19 @@ fun AdminDepositsScreen(nav: NavController) {
                                 else -> 2
                             }
 
-                            val body: AnyJson = mapOf(
-                                "member_id" to memberId,
-                                "year" to year,
-                                "month" to monthNumber.toString(),
-                                "base_amount" to base,
-                                "type" to formType,
-                                "notes" to formNotes.takeIf { it.isNotBlank() },
-                                "deposited_at" to formDepositedAt
+                            val req = AdminDepositUpsertRequest(
+                                memberId = memberId,
+                                year = year,
+                                month = monthNumber.toString(),
+                                baseAmount = base,
+                                type = formType,
+                                notes = formNotes.takeIf { it.isNotBlank() },
+                                depositedAt = formDepositedAt
                             )
 
                             scope.launch {
                                 try {
-                                    repo.adminCreateDeposit(body)
+                                    repo.adminCreateDeposit(req)
                                     Toast.makeText(context, "Deposit added", Toast.LENGTH_SHORT).show()
                                     showAddSheet = false
                                     load(1)
@@ -556,13 +562,14 @@ fun AdminDepositsScreen(nav: NavController) {
                     )
                 }
 
+                // ✅ Form year picker — includes currentYear+1 always
                 if (showFormYearPicker) {
                     AlertDialog(
                         onDismissRequest = { showFormYearPicker = false },
                         title = { Text("Select year") },
                         text = {
                             LazyColumn {
-                                items(availableYears.ifEmpty { listOf(2026) }) { y ->
+                                items(formYearOptions) { y ->
                                     Text(
                                         y.toString(),
                                         modifier = Modifier
