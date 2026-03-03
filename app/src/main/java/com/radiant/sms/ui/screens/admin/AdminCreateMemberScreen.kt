@@ -12,8 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.radiant.sms.data.Repository
 import com.radiant.sms.network.NetworkModule
@@ -61,6 +61,8 @@ fun AdminCreateMemberScreen(
 
     var memberPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var nomineePhotoUri by remember { mutableStateOf<Uri?>(null) }
+
+    var showConfirm by remember { mutableStateOf(false) }
 
     val pickMemberPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         memberPhotoUri = uri
@@ -117,34 +119,54 @@ fun AdminCreateMemberScreen(
                         Toast.makeText(context, "Password mismatch", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-
-                    val parts = mutableListOf<MultipartBody.Part>()
-
-                    parts += MultipartUtil.textPart("full_name", fullName)
-                    parts += MultipartUtil.textPart("nid", nid)
-                    parts += MultipartUtil.textPart("email", email)
-                    parts += MultipartUtil.textPart("password", password)
-                    parts += MultipartUtil.textPart("mobile_number", mobile)
-                    parts += MultipartUtil.textPart("nominee_name", nomineeName)
-                    parts += MultipartUtil.textPart("nominee_nid", nomineeNid)
-                    parts += MultipartUtil.textPart("share", share)
-
-                    MultipartUtil.filePart(context, "image", memberPhotoUri)?.let { parts += it }
-                    MultipartUtil.filePart(context, "nominee_photo", nomineePhotoUri)?.let { parts += it }
-
-                    vm.create(
-                        parts = parts,
-                        onDone = {
-                            Toast.makeText(context, "Member created", Toast.LENGTH_SHORT).show()
-                            nav.popBackStack()
-                        },
-                        onError = { msg ->
-                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-                        }
-                    )
+                    showConfirm = true
                 }
             ) {
                 Text("Create Member")
+            }
+
+            if (showConfirm) {
+                AlertDialog(
+                    onDismissRequest = { showConfirm = false },
+                    title = { Text("Confirm Create") },
+                    text = { Text("Create this member now?") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                showConfirm = false
+
+                                val parts = mutableListOf<MultipartBody.Part>()
+                                parts += MultipartUtil.textPart("full_name", fullName)
+                                parts += MultipartUtil.textPart("nid", nid)
+                                parts += MultipartUtil.textPart("email", email)
+                                parts += MultipartUtil.textPart("password", password)
+                                parts += MultipartUtil.textPart("mobile_number", mobile)
+                                parts += MultipartUtil.textPart("nominee_name", nomineeName)
+                                parts += MultipartUtil.textPart("nominee_nid", nomineeNid)
+                                parts += MultipartUtil.textPart("share", share)
+
+                                MultipartUtil.filePart(context, "image", memberPhotoUri)?.let { parts += it }
+                                MultipartUtil.filePart(context, "nominee_photo", nomineePhotoUri)?.let { parts += it }
+
+                                vm.create(
+                                    parts = parts,
+                                    onDone = {
+                                        Toast.makeText(context, "Member created", Toast.LENGTH_SHORT).show()
+                                        // Tell AdminPanel to refresh when we go back
+                                        nav.previousBackStackEntry?.savedStateHandle?.set("members_refresh", true)
+                                        nav.popBackStack()
+                                    },
+                                    onError = { msg ->
+                                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                    }
+                                )
+                            }
+                        ) { Text("Confirm") }
+                    },
+                    dismissButton = {
+                        OutlinedButton(onClick = { showConfirm = false }) { Text("Cancel") }
+                    }
+                )
             }
         }
     }
