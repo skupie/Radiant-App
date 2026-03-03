@@ -31,7 +31,7 @@ class Repository(private val api: ApiService) {
     // ---------- ADMIN ----------
     suspend fun adminMembersAll(search: String? = null): List<AdminMemberDto> {
         val all = mutableListOf<AdminMemberDto>()
-        val perPage = 100 // ✅ backend max (prevents HTTP 422)
+        val perPage = 100
         var page = 1
 
         while (true) {
@@ -54,40 +54,35 @@ class Repository(private val api: ApiService) {
     suspend fun adminUpdateMember(memberId: Long, parts: List<MultipartBody.Part>): MessageResponse =
         api.adminUpdateMember(memberId, parts)
 
-    // keep existing screens working
+    // ✅ keep existing screens working
     suspend fun adminDeposits(search: String? = null, perPage: Int? = null): AnyJson =
         api.adminDeposits(search = search, perPage = perPage)
 
     suspend fun adminDueSummary(search: String? = null, perPage: Int? = null): AnyJson =
         api.adminDueSummary(search = search, perPage = perPage)
 
-        //-----------Deposit ------------
-        suspend fun adminDepositsList(
-    memberId: Int? = null,
-    year: Int? = null,
-    perPage: Int = 10,
-    page: Int = 1
-) = api.adminDepositsList(memberId, year, perPage, page)
+    // ✅ NEW: typed deposits list + filters + pagination + summary total
+    suspend fun adminDepositsList(
+        search: String? = null,
+        memberId: Long? = null,
+        year: Int? = null,
+        perPage: Int = 10,
+        page: Int = 1
+    ): AdminDepositsResponse =
+        api.adminDepositsList(
+            search = search,
+            memberId = memberId,
+            year = year,
+            perPage = perPage,
+            page = page
+        )
 
-suspend fun adminCreateDeposit(
-    memberId: Int,
-    year: Int,
-    month: String,
-    baseAmount: Double,
-    type: String,
-    notes: String?
-) = api.adminCreateDeposit(memberId, year, month, baseAmount, type, notes)
+    suspend fun adminCreateDeposit(body: AnyJson): AnyJson =
+        api.adminCreateDeposit(body)
 
-suspend fun adminUpdateDeposit(
-    id: Int,
-    memberId: Int,
-    year: Int,
-    month: String,
-    baseAmount: Double,
-    type: String,
-    notes: String?
-) = api.adminUpdateDeposit(id, memberId, year, month, baseAmount, type, notes)
+    suspend fun adminUpdateDeposit(id: Long, body: AnyJson): AnyJson =
+        api.adminUpdateDeposit(id, body)
 
-suspend fun adminDeleteDeposit(id: Int) =
-    api.adminDeleteDeposit(id)
+    suspend fun adminDeleteDeposit(id: Long): AnyJson =
+        api.adminDeleteDeposit(id)
 }
