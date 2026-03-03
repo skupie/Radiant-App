@@ -4,40 +4,57 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.radiant.sms.data.Repository
 import com.radiant.sms.network.AdminMemberDto
 import com.radiant.sms.network.NetworkModule
 
 @Composable
 fun AdminPanelScreen(
+    nav: NavController,
     modifier: Modifier = Modifier,
     onMemberClick: (Int) -> Unit,
     onCreateMemberClick: () -> Unit,
     onExportPdfClick: () -> Unit,
     onExportExcelClick: () -> Unit
 ) {
-
-    val context = LocalContext.current
-    val api = remember { NetworkModule.api(context) }
+    val api = remember { NetworkModule.api(nav.context) }
     val repo = remember { Repository(api) }
 
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var members by remember { mutableStateOf<List<AdminMemberDto>>(emptyList()) }
 
-    LaunchedEffect(Unit) {
+    fun loadMembers() {
+        loading = true
+        error = null
+        // Using LaunchedEffect below; this is only helper
+    }
+
+    // Listen for refresh flag from Create/Update screens
+    val refreshFlagFlow = remember(nav) {
+        nav.currentBackStackEntry?.savedStateHandle?.getStateFlow("members_refresh", false)
+    }
+    val refreshFlag by refreshFlagFlow?.collectAsState() ?: remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit, refreshFlag) {
+        if (refreshFlag) {
+            nav.currentBackStackEntry?.savedStateHandle?.set("members_refresh", false)
+        }
+
+        loading = true
+        error = null
         try {
-            // Loads ALL members (no pagination in UI)
             members = repo.adminMembersAll()
         } catch (e: Exception) {
-            error = e.message
+            error = e.message ?: "Failed to load"
         } finally {
             loading = false
         }
@@ -49,14 +66,7 @@ fun AdminPanelScreen(
             .padding(16.dp)
     ) {
 
-        Text(
-            text = "Admin Dashboard",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(Modifier.height(16.dp))
-
+        // Actions row (keep)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -64,33 +74,61 @@ fun AdminPanelScreen(
             Button(
                 modifier = Modifier.weight(1f),
                 onClick = onCreateMemberClick
-            ) {
-                Text("Create Member")
-            }
+            ) { Text("Create Member") }
 
             OutlinedButton(
                 modifier = Modifier.weight(1f),
                 onClick = onExportPdfClick
-            ) {
-                Text("PDF")
-            }
+            ) { Text("PDF") }
 
             OutlinedButton(
                 modifier = Modifier.weight(1f),
                 onClick = onExportExcelClick
+            ) { Text("Excel") }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        // Header row like screenshot: Member | Share | Deposits
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Excel")
+                Text(
+                    text = "Member",
+                    modifier = Modifier.weight(1.4f),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = "Share",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = "Deposits",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(12.dp))
 
         when {
             loading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             }
@@ -103,24 +141,12 @@ fun AdminPanelScreen(
             }
 
             else -> {
-
-                Text(
-                    text = "Total Members: ${members.size}",
-                    style = MaterialTheme.typography.titleMedium
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(members) { member ->
-                        MemberCard(
+                        AdminMemberCard(
                             member = member,
                             onClick = {
-                                member.id?.let { id ->
-                                    onMemberClick(id.toInt())
-                                }
+                                member.id?.let { onMemberClick(it.toInt()) }
                             }
                         )
                     }
@@ -131,36 +157,69 @@ fun AdminPanelScreen(
 }
 
 @Composable
-private fun MemberCard(
+private fun AdminMemberCard(
     member: AdminMemberDto,
     onClick: () -> Unit
 ) {
+    val shareCount = member.share ?: 0
+    val depositCount = member.depositsCount ?: 0
+    val depositAmount = member.totalDeposit ?: 0.0
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .clickable { onClick() },
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(Modifier.padding(14.dp)) {
+        Column(Modifier.padding(18.dp)) {
 
             Text(
                 text = member.fullName ?: "Unnamed Member",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
             )
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
 
             Text(
                 text = member.email ?: "",
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.titleMedium
             )
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(18.dp))
 
-            Text(
-                text = "NID: ${member.nid ?: "-"}",
-                style = MaterialTheme.typography.bodySmall
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Share: $shareCount",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleLarge
+                )
+
+                Text(
+                    text = "Deposits: $depositCount",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleLarge
+                )
+
+                Text(
+                    text = "৳ ${formatMoney(depositAmount)}",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
+    }
+}
+
+private fun formatMoney(value: Double): String {
+    return if (value % 1.0 == 0.0) {
+        "${value.toInt()}.0"
+    } else {
+        value.toString()
     }
 }
