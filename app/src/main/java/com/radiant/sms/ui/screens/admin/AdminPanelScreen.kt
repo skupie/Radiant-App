@@ -1,21 +1,46 @@
 package com.radiant.sms.ui.screens.admin
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.Repository
 import com.radiant.sms.network.AdminMemberDto
 import com.radiant.sms.network.NetworkModule
+import java.util.Locale
 
 @Composable
 fun AdminPanelScreen(
@@ -54,70 +79,62 @@ fun AdminPanelScreen(
         }
     }
 
+    // ---- Fintech style ----
+    val screenBg = Color(0xFFF6F7FB)
+    val cardBg = Color.White
+    val subtleText = Color(0xFF6B7280)
+    val cardShape = RoundedCornerShape(22.dp)
+    val chipShape = RoundedCornerShape(999.dp)
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .background(screenBg)
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp)
     ) {
+        Spacer(Modifier.height(12.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Button(
-                modifier = Modifier.weight(1f),
-                onClick = onCreateMemberClick
-            ) { Text("Create Member") }
-
-            OutlinedButton(
-                modifier = Modifier.weight(1f),
-                onClick = onExportPdfClick
-            ) { Text("PDF") }
-
-            OutlinedButton(
-                modifier = Modifier.weight(1f),
-                onClick = onExportExcelClick
-            ) { Text("Excel") }
-        }
-
-        Spacer(Modifier.height(14.dp))
-
-        // Header row: Member | Share | Deposits
+        // Header Card (matches Deposits page look)
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            shape = cardShape,
+            colors = CardDefaults.cardColors(containerColor = cardBg),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Column(Modifier.padding(16.dp)) {
                 Text(
-                    text = "Member",
-                    modifier = Modifier.weight(1.4f),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Share",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleLarge,
+                    text = "Members",
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = "Deposits",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.End
-                )
+                Spacer(Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        modifier = Modifier.weight(1f),
+                        onClick = onCreateMemberClick
+                    ) { Text("Create Member") }
+
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = onExportPdfClick
+                    ) { Text("PDF") }
+
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = onExportExcelClick
+                    ) { Text("Excel") }
+                }
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(14.dp))
 
         when {
             loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -128,21 +145,28 @@ fun AdminPanelScreen(
 
             else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(members) { member ->
-                    AdminMemberCard(
+                    AdminMemberCardModern(
                         member = member,
-                        onClick = {
-                            member.id?.let { onMemberClick(it.toInt()) }
-                        }
+                        cardBg = cardBg,
+                        subtleText = subtleText,
+                        cardShape = cardShape,
+                        chipShape = chipShape,
+                        onClick = { member.id?.let { onMemberClick(it.toInt()) } }
                     )
                 }
+                item { Spacer(Modifier.height(16.dp)) }
             }
         }
     }
 }
 
 @Composable
-private fun AdminMemberCard(
+private fun AdminMemberCardModern(
     member: AdminMemberDto,
+    cardBg: Color,
+    subtleText: Color,
+    cardShape: RoundedCornerShape,
+    chipShape: RoundedCornerShape,
     onClick: () -> Unit
 ) {
     val shareCount = member.share ?: 0
@@ -153,56 +177,86 @@ private fun AdminMemberCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        shape = cardShape,
+        colors = CardDefaults.cardColors(containerColor = cardBg),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(Modifier.padding(18.dp)) {
+        Column(Modifier.padding(16.dp)) {
 
-            Text(
-                text = member.fullName ?: "Unnamed Member",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(Modifier.height(6.dp))
-
-            Text(
-                text = member.email ?: "",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            Spacer(Modifier.height(18.dp))
-
-            // Bottom row: Share (left) | Deposits count (center) | Total amount (right)
+            // Top row: Name + Total deposited badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = "Share: $shareCount",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleLarge
-                )
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = member.fullName ?: "Unnamed Member",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = member.email ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = subtleText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
 
-                Text(
-                    text = "Deposits: $depositCount",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleLarge,
-                    textAlign = TextAlign.Center
-                )
+                Spacer(Modifier.width(10.dp))
 
-                Text(
-                    text = "৳ ${formatMoney(totalAmount)}",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.End
-                )
+                // Total deposited pill (fintech style like deposit page)
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                            shape = chipShape
+                        )
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "BDT ${formatBDT(totalAmount)}",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // Bottom row: Share | Deposits
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text("Share", style = MaterialTheme.typography.labelSmall, color = subtleText)
+                    Text(
+                        text = shareCount.toString(),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Deposits", style = MaterialTheme.typography.labelSmall, color = subtleText)
+                    Text(
+                        text = depositCount.toString(),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }
 }
 
-private fun formatMoney(value: Double): String {
-    return if (value % 1.0 == 0.0) "${value.toInt()}.0" else value.toString()
+private fun formatBDT(value: Double): String {
+    // Always 2 decimals, modern finance look
+    return String.format(Locale.getDefault(), "%.2f", value)
 }
