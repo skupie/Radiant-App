@@ -487,9 +487,13 @@ private fun TeamMemberUpsertDialog(
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var email by remember { mutableStateOf(initial?.email ?: "") }
     var password by remember { mutableStateOf("") }
-    var role by remember { mutableStateOf(initial?.role ?: "admin") }
 
-    val roles = listOf("admin", "editor", "viewer")
+    // ✅ FIX: Jetstream roles (NO viewer)
+    val roles = listOf("admin", "editor")
+
+    // ✅ Default to editor for new users
+    var role by remember { mutableStateOf(initial?.role ?: "editor") }
+
     var roleMenu by remember { mutableStateOf(false) }
 
     AlertDialog(
