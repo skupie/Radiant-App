@@ -5,19 +5,25 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.radiant.sms.data.Repository
 import com.radiant.sms.network.AdminMemberDetailsDto
 import com.radiant.sms.network.NetworkModule
@@ -109,12 +115,20 @@ fun AdminMemberDetailsScreen(
     }
 
     val scrollState = rememberScrollState()
+    val cardShape = RoundedCornerShape(18.dp)
+
+    // ✅ Existing URLs from API (absolute-safe)
+    val memberPhotoUrl = NetworkModule.absoluteUrl(s.member?.imageUrl)
+    val nomineePhotoUrl = NetworkModule.absoluteUrl(s.member?.nomineePhotoUrl)
 
     AdminScaffold(nav = nav, title = "Update Member", hideTitle = false, showHamburger = true) {
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                // ✅ FIX: keep content close to top, but safe from system bars
+                .padding(top = 6.dp)
+                .statusBarsPadding()
                 .verticalScroll(scrollState)
                 .padding(horizontal = 14.dp, vertical = 12.dp)
                 .navigationBarsPadding()
@@ -199,27 +213,33 @@ fun AdminMemberDetailsScreen(
                 )
             }
 
-            Spacer(Modifier.height(2.dp))
-
             Text("Member Photo (JPG)", style = MaterialTheme.typography.titleMedium)
-            Button(
-                onClick = { pickMemberPhoto.launch("image/*") },
-                shape = RoundedCornerShape(50),
-                modifier = Modifier
-                    .height(52.dp)
-            ) { Text("Choose file") }
 
-            Spacer(Modifier.height(10.dp))
+            Card(modifier = Modifier.fillMaxWidth(), shape = cardShape) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    PhotoPreview(localUri = memberPhotoUri, remoteUrl = memberPhotoUrl, height = 190.dp, shape = cardShape)
+                    Button(
+                        onClick = { pickMemberPhoto.launch("image/*") },
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier.height(52.dp)
+                    ) { Text("Choose file") }
+                }
+            }
 
             Text("Nominee Photo (JPG)", style = MaterialTheme.typography.titleMedium)
-            Button(
-                onClick = { pickNomineePhoto.launch("image/*") },
-                shape = RoundedCornerShape(50),
-                modifier = Modifier
-                    .height(52.dp)
-            ) { Text("Choose file") }
 
-            Spacer(Modifier.height(18.dp))
+            Card(modifier = Modifier.fillMaxWidth(), shape = cardShape) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    PhotoPreview(localUri = nomineePhotoUri, remoteUrl = nomineePhotoUrl, height = 190.dp, shape = cardShape)
+                    Button(
+                        onClick = { pickNomineePhoto.launch("image/*") },
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier.height(52.dp)
+                    ) { Text("Choose file") }
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
 
             Button(
                 modifier = Modifier
@@ -233,9 +253,7 @@ fun AdminMemberDetailsScreen(
                     }
                     showUpdateConfirm = true
                 }
-            ) {
-                Text("Save Changes")
-            }
+            ) { Text("Save Changes") }
 
             Spacer(Modifier.height(20.dp))
 
@@ -278,4 +296,64 @@ fun AdminMemberDetailsScreen(
             }
         }
     }
+}
+
+@Composable
+private fun PhotoPreview(
+    localUri: Uri?,
+    remoteUrl: String?,
+    height: Dp,
+    shape: RoundedCornerShape
+) {
+    val context = LocalContext.current
+
+    val model = when {
+        localUri != null -> localUri
+        !remoteUrl.isNullOrBlank() -> remoteUrl
+        else -> null
+    }
+
+    if (model == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(height)
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("No photo uploaded")
+        }
+        return
+    }
+
+    SubcomposeAsyncImage(
+        model = ImageRequest.Builder(context).data(model).crossfade(true).build(),
+        contentDescription = "Photo",
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .clip(shape),
+        contentScale = ContentScale.Crop,
+        loading = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(height)
+                    .clip(shape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) { CircularProgressIndicator() }
+        },
+        error = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(height)
+                    .clip(shape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) { Text("Failed to load image") }
+        }
+    )
 }
