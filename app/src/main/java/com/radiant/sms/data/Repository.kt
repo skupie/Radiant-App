@@ -88,4 +88,21 @@ class Repository(private val api: ApiService) {
 
     suspend fun adminDeleteDeposit(id: Long): AnyJson =
         api.adminDeleteDeposit(id)
+
+
+        // ---------- ADMIN PANEL (Activity + Team Members) ----------
+suspend fun adminActivity(perPage: Int? = 50, page: Int? = 1): List<AdminActivityDto> =
+    api.adminActivity(perPage = perPage, page = page).data
+
+suspend fun adminTeamMembers(): List<AdminTeamMemberDto> =
+    api.adminTeamMembers().data
+
+suspend fun adminCreateTeamMember(body: AdminTeamMemberUpsertRequest): MessageResponse =
+    api.adminCreateTeamMember(body)
+
+suspend fun adminUpdateTeamMember(id: Long, body: AdminTeamMemberUpsertRequest): MessageResponse =
+    api.adminUpdateTeamMember(id, body)
+
+suspend fun adminDeleteTeamMember(id: Long): MessageResponse =
+    api.adminDeleteTeamMember(id)
 }
