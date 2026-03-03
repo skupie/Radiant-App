@@ -6,12 +6,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -153,7 +152,6 @@ fun AdminDepositsScreen(nav: NavController) {
             val mapped = memberNameMap[id]
             if (!mapped.isNullOrBlank()) return mapped
         }
-
         return "Member"
     }
 
@@ -165,7 +163,6 @@ fun AdminDepositsScreen(nav: NavController) {
 
     fun formatDepositedAt(raw: String): String {
         if (raw.isBlank() || raw == "-") return "-"
-
         val outFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.getDefault())
 
         try {
@@ -202,7 +199,7 @@ fun AdminDepositsScreen(nav: NavController) {
             error = null
             try {
                 val resp = repo.adminDepositsList(
-                    search = null, // ✅ search removed
+                    search = null,
                     memberId = selectedMemberId,
                     year = selectedYear,
                     perPage = 10,
@@ -251,129 +248,127 @@ fun AdminDepositsScreen(nav: NavController) {
     }
 
     AdminScaffold(nav = nav, hideTitle = false, showHamburger = true) {
-        // ✅ prevents header from being hidden behind status bar
-        Spacer(
-            Modifier.height(
-                WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
-            )
-        )
 
-        Spacer(Modifier.height(6.dp))
+        // ✅ OLD-COMPOSE SAFE TOP PADDING (no asPaddingValues needed)
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
 
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text("Deposits", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            "Total Deposit: BDT %.2f".format(totalDeposits),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+            Spacer(Modifier.height(6.dp))
 
-                    Button(onClick = {
-                        showAddSheet = true
-                        formMemberId = null
-                        formMemberName = "Select member"
-                        formYear = selectedYear ?: currentYear
-                        formMonth = "Feb"
-                        formBaseAmount = ""
-                        formType = "Cash"
-                        formNotes = ""
-                        formDepositedAt = nowTimestamp()
-                    }) { Text("Add Deposit") }
-                }
-            }
-        }
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("Deposits", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "Total Deposit: BDT %.2f".format(totalDeposits),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
 
-        Spacer(Modifier.height(12.dp))
-
-        // ✅ Filters ONLY: Member + Year
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedButton(modifier = Modifier.weight(1f), onClick = { showMemberPicker = true }) {
-                        Text(selectedMemberName)
-                    }
-                    OutlinedButton(modifier = Modifier.weight(1f), onClick = { showYearPicker = true }) {
-                        Text(selectedYear?.toString() ?: "All years")
+                        Button(onClick = {
+                            showAddSheet = true
+                            formMemberId = null
+                            formMemberName = "Select member"
+                            formYear = selectedYear ?: currentYear
+                            formMonth = "Feb"
+                            formBaseAmount = ""
+                            formType = "Cash"
+                            formNotes = ""
+                            formDepositedAt = nowTimestamp()
+                        }) { Text("Add Deposit") }
                     }
                 }
-
-                Spacer(Modifier.height(10.dp))
-
-                OutlinedButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { resetFiltersAndReload() }
-                ) { Text("Reset") }
             }
-        }
 
-        Spacer(Modifier.height(12.dp))
-        Divider()
-        Spacer(Modifier.height(12.dp))
-
-        if (loading) {
-            LinearProgressIndicator(Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
-        }
 
-        error?.let {
-            Text(it, color = MaterialTheme.colorScheme.error)
-            Spacer(Modifier.height(10.dp))
-        }
-
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(items) { d ->
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(bestMemberName(d), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(4.dp))
-                        Text(displayMonthYear(d.month, d.year), style = MaterialTheme.typography.bodySmall)
-
-                        Spacer(Modifier.height(10.dp))
-
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Base: ${d.baseAmount ?: 0.0}")
-                            Text("Total: ${d.totalAmount ?: 0.0}")
+            // Filters ONLY: Member + Year
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(modifier = Modifier.weight(1f), onClick = { showMemberPicker = true }) {
+                            Text(selectedMemberName)
                         }
-
-                        Spacer(Modifier.height(6.dp))
-
-                        val depositedRaw = bestDepositedAtRaw(d)
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Type: ${d.type ?: "-"}", style = MaterialTheme.typography.bodySmall)
-                            Text("Deposited: ${formatDepositedAt(depositedRaw)}", style = MaterialTheme.typography.bodySmall)
+                        OutlinedButton(modifier = Modifier.weight(1f), onClick = { showYearPicker = true }) {
+                            Text(selectedYear?.toString() ?: "All years")
                         }
+                    }
 
-                        Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(10.dp))
 
-                        Button(modifier = Modifier.fillMaxWidth(), onClick = { deleteId = d.id }) {
-                            Text("Delete")
+                    OutlinedButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { resetFiltersAndReload() }
+                    ) { Text("Reset") }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            Divider()
+            Spacer(Modifier.height(12.dp))
+
+            if (loading) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+                Spacer(Modifier.height(12.dp))
+            }
+
+            error?.let {
+                Text(it, color = MaterialTheme.colorScheme.error)
+                Spacer(Modifier.height(10.dp))
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(items) { d ->
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text(bestMemberName(d), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.height(4.dp))
+                            Text(displayMonthYear(d.month, d.year), style = MaterialTheme.typography.bodySmall)
+
+                            Spacer(Modifier.height(10.dp))
+
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Base: ${d.baseAmount ?: 0.0}")
+                                Text("Total: ${d.totalAmount ?: 0.0}")
+                            }
+
+                            Spacer(Modifier.height(6.dp))
+
+                            val depositedRaw = bestDepositedAtRaw(d)
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Type: ${d.type ?: "-"}", style = MaterialTheme.typography.bodySmall)
+                                Text("Deposited: ${formatDepositedAt(depositedRaw)}", style = MaterialTheme.typography.bodySmall)
+                            }
+
+                            Spacer(Modifier.height(10.dp))
+
+                            Button(modifier = Modifier.fillMaxWidth(), onClick = { deleteId = d.id }) {
+                                Text("Delete")
+                            }
                         }
                     }
                 }
-            }
 
-            item {
-                Spacer(Modifier.height(6.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    OutlinedButton(enabled = page > 1, onClick = { load((page - 1).toInt()) }) { Text("Prev") }
-                    Text("Page $page of $lastPage")
-                    OutlinedButton(enabled = page < lastPage, onClick = { load((page + 1).toInt()) }) { Text("Next") }
+                item {
+                    Spacer(Modifier.height(6.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        OutlinedButton(enabled = page > 1, onClick = { load((page - 1).toInt()) }) { Text("Prev") }
+                        Text("Page $page of $lastPage")
+                        OutlinedButton(enabled = page < lastPage, onClick = { load((page + 1).toInt()) }) { Text("Next") }
+                    }
+                    Spacer(Modifier.height(16.dp))
                 }
-                Spacer(Modifier.height(16.dp))
             }
         }
 
-        // ✅ Member picker (APPLY IMMEDIATELY)
+        // Member picker (APPLY IMMEDIATELY)
         if (showMemberPicker) {
             AlertDialog(
                 onDismissRequest = { showMemberPicker = false },
@@ -394,7 +389,7 @@ fun AdminDepositsScreen(nav: NavController) {
                                             selectedMemberId = m.first
                                             selectedMemberName = m.second
                                         }
-                                        load(1) // ✅ reflect immediately
+                                        load(1)
                                     }
                                     .padding(vertical = 10.dp)
                             )
@@ -405,7 +400,7 @@ fun AdminDepositsScreen(nav: NavController) {
             )
         }
 
-        // ✅ Year picker (APPLY IMMEDIATELY)
+        // Year picker (APPLY IMMEDIATELY)
         if (showYearPicker) {
             AlertDialog(
                 onDismissRequest = { showYearPicker = false },
@@ -420,7 +415,7 @@ fun AdminDepositsScreen(nav: NavController) {
                                     .clickable {
                                         selectedYear = null
                                         showYearPicker = false
-                                        load(1) // ✅ reflect immediately
+                                        load(1)
                                     }
                                     .padding(vertical = 10.dp)
                             )
@@ -433,7 +428,7 @@ fun AdminDepositsScreen(nav: NavController) {
                                     .clickable {
                                         selectedYear = y
                                         showYearPicker = false
-                                        load(1) // ✅ reflect immediately
+                                        load(1)
                                     }
                                     .padding(vertical = 10.dp)
                             )
@@ -469,7 +464,7 @@ fun AdminDepositsScreen(nav: NavController) {
             )
         }
 
-        // Add sheet (unchanged save logic)
+        // NOTE: Add sheet block is unchanged (keep your existing add sheet logic below if already added)
         if (showAddSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showAddSheet = false },
