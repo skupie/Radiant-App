@@ -41,7 +41,6 @@ class Repository(private val api: ApiService) {
             if (chunk.size < perPage) break
             page++
         }
-
         return all
     }
 
@@ -54,14 +53,14 @@ class Repository(private val api: ApiService) {
     suspend fun adminUpdateMember(memberId: Long, parts: List<MultipartBody.Part>): MessageResponse =
         api.adminUpdateMember(memberId, parts)
 
-    // ✅ keep existing screens working
+    // keep existing screens working
     suspend fun adminDeposits(search: String? = null, perPage: Int? = null): AnyJson =
         api.adminDeposits(search = search, perPage = perPage)
 
     suspend fun adminDueSummary(search: String? = null, perPage: Int? = null): AnyJson =
         api.adminDueSummary(search = search, perPage = perPage)
 
-    // ✅ NEW: typed deposits list + filters + pagination + summary total
+    // typed deposits list + filters + pagination + summary total
     suspend fun adminDepositsList(
         search: String? = null,
         memberId: Long? = null,
@@ -77,10 +76,11 @@ class Repository(private val api: ApiService) {
             page = page
         )
 
-    suspend fun adminCreateDeposit(body: AnyJson): AnyJson =
+    // ✅ FIXED create/update: no Map wildcard
+    suspend fun adminCreateDeposit(body: AdminDepositUpsertRequest): AnyJson =
         api.adminCreateDeposit(body)
 
-    suspend fun adminUpdateDeposit(id: Long, body: AnyJson): AnyJson =
+    suspend fun adminUpdateDeposit(id: Long, body: AdminDepositUpsertRequest): AnyJson =
         api.adminUpdateDeposit(id, body)
 
     suspend fun adminDeleteDeposit(id: Long): AnyJson =
