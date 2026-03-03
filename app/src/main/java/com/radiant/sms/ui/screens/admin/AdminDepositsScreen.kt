@@ -2,8 +2,10 @@ package com.radiant.sms.ui.screens.admin
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,8 +14,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -41,7 +45,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.navigation.NavController
 import com.radiant.sms.data.Repository
 import com.radiant.sms.network.AdminDepositItem
@@ -65,7 +68,7 @@ fun AdminDepositsScreen(nav: NavController) {
 
     val currentYear = remember { Calendar.getInstance().get(Calendar.YEAR) }
 
-    // ---- Financial-app style colors (match mockup) ----
+    // ---- Financial-app style colors ----
     val screenBg = Color(0xFFF6F7FB)
     val cardBg = Color.White
     val subtleText = Color(0xFF6B7280)
@@ -109,7 +112,7 @@ fun AdminDepositsScreen(nav: NavController) {
     var formYear by remember { mutableStateOf<Int?>(null) }
     var formMonth by remember { mutableStateOf("Feb") }
     var formBaseAmount by remember { mutableStateOf("") }
-    var formType by remember { mutableStateOf("Cash") } // UI label
+    var formType by remember { mutableStateOf("Cash") }
     var formNotes by remember { mutableStateOf("") }
     var formDepositedAt by remember { mutableStateOf("") }
 
@@ -186,7 +189,6 @@ fun AdminDepositsScreen(nav: NavController) {
             return ldt.format(outFmt)
         } catch (_: Exception) {}
 
-        // fallback
         return raw
     }
 
@@ -239,6 +241,42 @@ fun AdminDepositsScreen(nav: NavController) {
     }
 
     val cardShape = RoundedCornerShape(22.dp)
+    val chipShape = RoundedCornerShape(999.dp)
+
+    @Composable
+    fun Chip(
+        text: String,
+        selected: Boolean,
+        enabled: Boolean = true,
+        onClick: () -> Unit
+    ) {
+        val bg = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
+        val content = if (selected) Color.White else MaterialTheme.colorScheme.primary
+        val border = if (selected) Color.Transparent else MaterialTheme.colorScheme.primary
+
+        Box(
+            modifier = Modifier
+                .border(1.dp, if (enabled) border else Color(0xFFCBD5E1), chipShape)
+                .background(if (enabled) bg else Color(0xFFF1F5F9), chipShape)
+                .clickable(enabled = enabled) { onClick() }
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text = text,
+                color = if (enabled) content else Color(0xFF94A3B8),
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+
+    fun pageWindow(current: Int, last: Int): List<Int> {
+        if (last <= 1) return listOf(1)
+        val start = (current - 2).coerceAtLeast(1)
+        val end = (current + 2).coerceAtMost(last)
+        return (start..end).toList()
+    }
 
     AdminScaffold(nav = nav, hideTitle = true, showHamburger = true) {
 
@@ -251,7 +289,7 @@ fun AdminDepositsScreen(nav: NavController) {
         ) {
             Spacer(Modifier.height(12.dp))
 
-            // ---- Header Card (Financial style) ----
+            // ---- Header Card ----
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = cardShape,
@@ -291,16 +329,14 @@ fun AdminDepositsScreen(nav: NavController) {
                                 formNotes = ""
                                 formDepositedAt = nowTimestamp()
                             }
-                        ) {
-                            Text("Add Deposit")
-                        }
+                        ) { Text("Add Deposit") }
                     }
                 }
             }
 
             Spacer(Modifier.height(14.dp))
 
-            // ---- Filters Card (pills, no Reset) ----
+            // ---- Filters Card (no Reset) ----
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = cardShape,
@@ -348,7 +384,6 @@ fun AdminDepositsScreen(nav: NavController) {
             Divider(color = Color(0xFFE6E8EF))
             Spacer(Modifier.height(12.dp))
 
-            // ---- List ----
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -386,13 +421,37 @@ fun AdminDepositsScreen(nav: NavController) {
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(Modifier.padding(16.dp)) {
-                            Text(
-                                text = bestMemberName(d),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = bestMemberName(d),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                // ✅ Total badge pill (financial style)
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                                            shape = chipShape
+                                        )
+                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = "Total ${d.totalAmount ?: 0.0}",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
 
                             Spacer(Modifier.height(6.dp))
 
@@ -410,60 +469,111 @@ fun AdminDepositsScreen(nav: NavController) {
                             ) {
                                 Column {
                                     Text("Base", style = MaterialTheme.typography.labelSmall, color = subtleText)
-                                    Text("${d.baseAmount ?: 0.0}", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                                    Text(
+                                        "${d.baseAmount ?: 0.0}",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 }
                                 Column {
-                                    Text("Total", style = MaterialTheme.typography.labelSmall, color = subtleText)
-                                    Text("${d.totalAmount ?: 0.0}", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                                    Text("Type", style = MaterialTheme.typography.labelSmall, color = subtleText)
+                                    Text(
+                                        (d.type ?: "-").replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 }
                             }
 
                             Spacer(Modifier.height(10.dp))
 
                             val depositedRaw = bestDepositedAtRaw(d)
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "Type: ${d.type ?: "-"}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = subtleText
-                                )
-                                Text(
-                                    text = "Deposited: ${formatDepositedAt(depositedRaw)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = subtleText
-                                )
-                            }
+                            Text(
+                                text = "Deposited: ${formatDepositedAt(depositedRaw)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = subtleText
+                            )
 
                             Spacer(Modifier.height(14.dp))
 
-                            Button(
+                            // ✅ Delete becomes red outlined action (fintech style)
+                            OutlinedButton(
                                 modifier = Modifier.fillMaxWidth(),
                                 onClick = { deleteId = d.id }
                             ) {
-                                Text("Delete")
+                                Text(
+                                    "Delete",
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.Medium
+                                )
                             }
                         }
                     }
                 }
 
-                item {
-                    Spacer(Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        OutlinedButton(enabled = page > 1, onClick = { load((page - 1).toInt()) }) {
-                            Text("Prev")
+                // ✅ Pagination chip row (modern)
+                if (lastPage > 1) {
+                    item {
+                        Spacer(Modifier.height(4.dp))
+
+                        val current = page.toInt()
+                        val last = lastPage.toInt()
+                        val window = pageWindow(current, last)
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = cardShape,
+                            colors = CardDefaults.cardColors(containerColor = cardBg),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Chip(
+                                    text = "Prev",
+                                    selected = false,
+                                    enabled = current > 1,
+                                    onClick = { load(current - 1) }
+                                )
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    if (window.first() > 1) {
+                                        Chip(text = "1", selected = current == 1) { load(1) }
+                                        if (window.first() > 2) {
+                                            Text("…", color = subtleText, modifier = Modifier.padding(top = 6.dp))
+                                        }
+                                    }
+
+                                    window.forEach { p ->
+                                        Chip(
+                                            text = p.toString(),
+                                            selected = p == current,
+                                            onClick = { load(p) }
+                                        )
+                                    }
+
+                                    if (window.last() < last) {
+                                        if (window.last() < last - 1) {
+                                            Text("…", color = subtleText, modifier = Modifier.padding(top = 6.dp))
+                                        }
+                                        Chip(text = last.toString(), selected = current == last) { load(last) }
+                                    }
+                                }
+
+                                Chip(
+                                    text = "Next",
+                                    selected = false,
+                                    enabled = current < last,
+                                    onClick = { load(current + 1) }
+                                )
+                            }
                         }
-                        Text("Page $page of $lastPage", color = subtleText)
-                        OutlinedButton(enabled = page < lastPage, onClick = { load((page + 1).toInt()) }) {
-                            Text("Next")
-                        }
+
+                        Spacer(Modifier.height(16.dp))
                     }
-                    Spacer(Modifier.height(16.dp))
                 }
             }
         }
@@ -558,13 +668,13 @@ fun AdminDepositsScreen(nav: NavController) {
                                 Toast.makeText(context, e.message ?: "Delete failed", Toast.LENGTH_SHORT).show()
                             }
                         }
-                    }) { Text("Delete") }
+                    }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
                 },
                 dismissButton = { TextButton(onClick = { deleteId = null }) { Text("Cancel") } }
             )
         }
 
-        // ---- Add sheet (kept functional) ----
+        // ---- Add sheet ----
         if (showAddSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showAddSheet = false },
@@ -640,7 +750,7 @@ fun AdminDepositsScreen(nav: NavController) {
                                 else -> 2
                             }
 
-                            val normalizedType = formType.trim().lowercase(Locale.getDefault()) // cash/bkash/bank
+                            val normalizedType = formType.trim().lowercase(Locale.getDefault())
 
                             val req = AdminDepositUpsertRequest(
                                 memberId = memberId,
