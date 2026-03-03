@@ -43,6 +43,8 @@ import com.radiant.sms.network.AdminDepositItem
 import com.radiant.sms.network.AnyJson
 import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,11 +63,10 @@ fun AdminDepositsScreen(nav: NavController) {
     var selectedMemberName by remember { mutableStateOf("All members") }
     var selectedYear by remember { mutableStateOf<Int?>(null) }
 
-    // Pickers
     var showMemberPicker by remember { mutableStateOf(false) }
     var showYearPicker by remember { mutableStateOf(false) }
 
-    // Data for pickers
+    // Members & years
     var members by remember { mutableStateOf<List<Pair<Long, String>>>(emptyList()) }
     var availableYears by remember { mutableStateOf<List<Int>>(emptyList()) }
 
@@ -78,22 +79,29 @@ fun AdminDepositsScreen(nav: NavController) {
     // Delete dialog
     var deleteId by remember { mutableStateOf<Long?>(null) }
 
-    // Add/Edit Sheet
+    // Add sheet
     var showAddSheet by remember { mutableStateOf(false) }
-    var editItem by remember { mutableStateOf<AdminDepositItem?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // Add/Edit form state
+    // Add form
     var formMemberId by remember { mutableStateOf<Long?>(null) }
     var formMemberName by remember { mutableStateOf("Select member") }
     var formYear by remember { mutableStateOf<Int?>(null) }
-    var formMonth by remember { mutableStateOf("Feb") } // default
+    var formMonth by remember { mutableStateOf("Feb") }
     var formBaseAmount by remember { mutableStateOf("") }
-    var formType by remember { mutableStateOf("cash") }
+    var formType by remember { mutableStateOf("Cash") } // dropdown
     var formNotes by remember { mutableStateOf("") }
+    var formDepositedAt by remember { mutableStateOf("") } // editable timestamp
+
     var showFormMemberPicker by remember { mutableStateOf(false) }
     var showFormYearPicker by remember { mutableStateOf(false) }
     var showFormMonthPicker by remember { mutableStateOf(false) }
+    var showFormTypePicker by remember { mutableStateOf(false) }
+
+    fun nowTimestamp(): String {
+        val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        return fmt.format(Date())
+    }
 
     fun monthShortNameFromNumber(num: Int): String {
         return when (num) {
@@ -107,22 +115,35 @@ fun AdminDepositsScreen(nav: NavController) {
         val y = year?.toString()?.trim().orEmpty()
         val m = monthRaw?.trim().orEmpty()
 
-        // If backend sends "2" or "02"
         val asInt = m.toIntOrNull()
         val monthLabel = when {
             asInt != null -> monthShortNameFromNumber(asInt)
             m.length >= 3 -> m.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
             else -> "—"
         }
-
         return if (y.isNotBlank()) "$monthLabel $y" else monthLabel
     }
 
-    fun safeMemberName(d: AdminDepositItem): String {
-        val name = d.member?.name?.trim()
+    fun bestMemberName(d: AdminDepositItem): String {
+        val fromNested = d.member?.name?.trim()
+        if (!fromNested.isNullOrEmpty()) return fromNested
+
+        val full = d.memberFullName?.trim()
+        if (!full.isNullOrEmpty()) return full
+
+        val flat = d.memberName?.trim()
+        if (!flat.isNullOrEmpty()) return flat
+
+        val name = d.name?.trim()
         if (!name.isNullOrEmpty()) return name
-        val id = d.member?.id
-        return if (id != null && id > 0) "Member #$id" else "Member"
+
+        return "Member"
+    }
+
+    fun bestDepositedAt(d: AdminDepositItem): String {
+        return listOf(d.depositedAt, d.loggedAt, d.createdAt)
+            .firstOrNull { !it.isNullOrBlank() }
+            ?: "-"
     }
 
     fun load(pageToLoad: Int = page.toInt()) {
@@ -160,7 +181,6 @@ fun AdminDepositsScreen(nav: NavController) {
         load(1)
     }
 
-    // Load members + initial page
     LaunchedEffect(Unit) {
         scope.launch {
             try {
@@ -177,16 +197,14 @@ fun AdminDepositsScreen(nav: NavController) {
         load(1)
     }
 
-    // IMPORTANT: show scaffold title so your own header isn't hidden
     AdminScaffold(
         nav = nav,
         hideTitle = false,
         showHamburger = true
     ) {
-        // Give spacing so content doesn't sit under the top bar
         Spacer(Modifier.height(8.dp))
 
-        // Header card (always visible)
+        // Header card
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp)) {
                 Row(
@@ -203,16 +221,15 @@ fun AdminDepositsScreen(nav: NavController) {
                     }
 
                     Button(onClick = {
-                        // open add sheet with defaults
                         showAddSheet = true
-                        editItem = null
                         formMemberId = null
                         formMemberName = "Select member"
                         formYear = selectedYear
                         formMonth = "Feb"
                         formBaseAmount = ""
-                        formType = "cash"
+                        formType = "Cash"
                         formNotes = ""
+                        formDepositedAt = nowTimestamp() // ✅ auto now
                     }) {
                         Text("Add Deposit")
                     }
@@ -242,16 +259,12 @@ fun AdminDepositsScreen(nav: NavController) {
                     OutlinedButton(
                         modifier = Modifier.weight(1f),
                         onClick = { showMemberPicker = true }
-                    ) {
-                        Text(selectedMemberName)
-                    }
+                    ) { Text(selectedMemberName) }
 
                     OutlinedButton(
                         modifier = Modifier.weight(1f),
                         onClick = { showYearPicker = true }
-                    ) {
-                        Text(selectedYear?.toString() ?: "All years")
-                    }
+                    ) { Text(selectedYear?.toString() ?: "All years") }
                 }
 
                 Spacer(Modifier.height(10.dp))
@@ -287,7 +300,6 @@ fun AdminDepositsScreen(nav: NavController) {
             Spacer(Modifier.height(10.dp))
         }
 
-        // Deposit list
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -296,17 +308,13 @@ fun AdminDepositsScreen(nav: NavController) {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp)) {
                         Text(
-                            safeMemberName(d),
+                            bestMemberName(d), // ✅ member name fixed
                             fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleMedium
                         )
 
                         Spacer(Modifier.height(4.dp))
-
-                        Text(
-                            displayMonthYear(d.month, d.year),
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                        Text(displayMonthYear(d.month, d.year), style = MaterialTheme.typography.bodySmall)
 
                         Spacer(Modifier.height(10.dp))
 
@@ -316,31 +324,14 @@ fun AdminDepositsScreen(nav: NavController) {
                         }
 
                         Spacer(Modifier.height(6.dp))
-
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Type: ${d.type ?: "-"}", style = MaterialTheme.typography.bodySmall)
-                            Text(d.loggedAt ?: "-", style = MaterialTheme.typography.bodySmall)
+                            Text("Deposited: ${bestDepositedAt(d)}", style = MaterialTheme.typography.bodySmall)
                         }
 
                         Spacer(Modifier.height(10.dp))
 
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            OutlinedButton(
-                                modifier = Modifier.weight(1f),
-                                onClick = {
-                                    // Pre-fill edit form
-                                    editItem = d
-                                    showAddSheet = false
-                                    formMemberId = d.member?.id
-                                    formMemberName = d.member?.name ?: "Member"
-                                    formYear = d.year
-                                    formMonth = displayMonthYear(d.month, null).substringBefore(" ").ifBlank { "Feb" }
-                                    formBaseAmount = (d.baseAmount ?: 0.0).toString()
-                                    formType = d.type ?: "cash"
-                                    formNotes = ""
-                                }
-                            ) { Text("Edit") }
-
                             Button(
                                 modifier = Modifier.weight(1f),
                                 onClick = { deleteId = d.id }
@@ -461,9 +452,7 @@ fun AdminDepositsScreen(nav: NavController) {
                         }
                     }) { Text("Delete") }
                 },
-                dismissButton = {
-                    TextButton(onClick = { deleteId = null }) { Text("Cancel") }
-                }
+                dismissButton = { TextButton(onClick = { deleteId = null }) { Text("Cancel") } }
             )
         }
 
@@ -498,6 +487,13 @@ fun AdminDepositsScreen(nav: NavController) {
 
                     Spacer(Modifier.height(10.dp))
 
+                    OutlinedButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { showFormTypePicker = true } // ✅ dropdown picker
+                    ) { Text("Type: $formType") }
+
+                    Spacer(Modifier.height(10.dp))
+
                     OutlinedTextField(
                         modifier = Modifier.fillMaxWidth(),
                         value = formBaseAmount,
@@ -508,11 +504,12 @@ fun AdminDepositsScreen(nav: NavController) {
 
                     Spacer(Modifier.height(10.dp))
 
+                    // ✅ Deposited at editable + default now
                     OutlinedTextField(
                         modifier = Modifier.fillMaxWidth(),
-                        value = formType,
-                        onValueChange = { formType = it },
-                        label = { Text("Type (cash/bank/etc)") },
+                        value = formDepositedAt,
+                        onValueChange = { formDepositedAt = it },
+                        label = { Text("Deposited at (yyyy-MM-dd HH:mm:ss)") },
                         singleLine = true
                     )
 
@@ -546,6 +543,10 @@ fun AdminDepositsScreen(nav: NavController) {
                                 Toast.makeText(context, "Enter valid base amount", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
+                            if (formDepositedAt.isBlank()) {
+                                Toast.makeText(context, "Deposited at required", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
 
                             val monthNumber = when (formMonth.lowercase(Locale.getDefault())) {
                                 "jan" -> 1; "feb" -> 2; "mar" -> 3; "apr" -> 4; "may" -> 5; "jun" -> 6
@@ -553,15 +554,14 @@ fun AdminDepositsScreen(nav: NavController) {
                                 else -> 2
                             }
 
-                            // Backend often accepts month as number or name.
-                            // Use number string to avoid "2 2026" display issues.
                             val body: AnyJson = mapOf(
                                 "member_id" to memberId,
                                 "year" to year,
                                 "month" to monthNumber.toString(),
                                 "base_amount" to base,
-                                "type" to formType,
-                                "notes" to formNotes.takeIf { it.isNotBlank() }
+                                "type" to formType,               // ✅ Cash/Bkash/Bank
+                                "notes" to formNotes.takeIf { it.isNotBlank() },
+                                "deposited_at" to formDepositedAt // ✅ timestamp sent
                             )
 
                             scope.launch {
@@ -602,9 +602,7 @@ fun AdminDepositsScreen(nav: NavController) {
                                 }
                             }
                         },
-                        confirmButton = {
-                            TextButton(onClick = { showFormMemberPicker = false }) { Text("Close") }
-                        }
+                        confirmButton = { TextButton(onClick = { showFormMemberPicker = false }) { Text("Close") } }
                     )
                 }
 
@@ -629,9 +627,7 @@ fun AdminDepositsScreen(nav: NavController) {
                                 }
                             }
                         },
-                        confirmButton = {
-                            TextButton(onClick = { showFormYearPicker = false }) { Text("Close") }
-                        }
+                        confirmButton = { TextButton(onClick = { showFormYearPicker = false }) { Text("Close") } }
                     )
                 }
 
@@ -657,30 +653,34 @@ fun AdminDepositsScreen(nav: NavController) {
                                 }
                             }
                         },
-                        confirmButton = {
-                            TextButton(onClick = { showFormMonthPicker = false }) { Text("Close") }
-                        }
+                        confirmButton = { TextButton(onClick = { showFormMonthPicker = false }) { Text("Close") } }
                     )
                 }
-            }
-        }
 
-        // Edit sheet placeholder (you said add option missing; edit can be expanded next)
-        if (editItem != null) {
-            ModalBottomSheet(
-                onDismissRequest = { editItem = null },
-                sheetState = sheetState
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Edit Deposit", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.height(10.dp))
-                    Text("Edit form can be enabled next (same as Add).")
-                    Spacer(Modifier.height(16.dp))
-                    Button(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { editItem = null }
-                    ) { Text("Close") }
-                    Spacer(Modifier.height(24.dp))
+                // ✅ Form type picker (dropdown)
+                if (showFormTypePicker) {
+                    val types = listOf("Cash", "Bkash", "Bank")
+                    AlertDialog(
+                        onDismissRequest = { showFormTypePicker = false },
+                        title = { Text("Select type") },
+                        text = {
+                            LazyColumn {
+                                items(types) { t ->
+                                    Text(
+                                        t,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                formType = t
+                                                showFormTypePicker = false
+                                            }
+                                            .padding(vertical = 10.dp)
+                                    )
+                                }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { showFormTypePicker = false }) { Text("Close") } }
+                    )
                 }
             }
         }
