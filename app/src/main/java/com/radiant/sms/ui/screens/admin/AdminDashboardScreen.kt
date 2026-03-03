@@ -17,19 +17,28 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember // ✅ FIX
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,9 +48,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.radiant.sms.AppConfig
+import com.radiant.sms.data.Repository
 import com.radiant.sms.data.TokenStore
+import com.radiant.sms.network.NetworkModule
 import com.radiant.sms.util.DownloadHelper
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,9 +61,10 @@ import java.util.Locale
 fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewModel()) {
     val s by vm.state.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    // ✅ keep token typed as String?
     val token: String? = remember { TokenStore(context).getTokenSync() }
+    val repo = remember { Repository(NetworkModule.api(context)) }
 
     // ---- Fintech style ----
     val screenBg = Color(0xFFF6F7FB)
@@ -60,23 +73,31 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
     val cardShape = RoundedCornerShape(22.dp)
     val chipShape = RoundedCornerShape(999.dp)
 
-    // ✅ Debounced instant search (no Search button)
+    // ✅ confirmations
+    var confirmEditId by remember { mutableStateOf<Long?>(null) }
+    var confirmEditName by remember { mutableStateOf("") }
+
+    var confirmDeleteId by remember { mutableStateOf<Long?>(null) }
+    var confirmDeleteName by remember { mutableStateOf("") }
+
+    // ✅ Debounced instant search
     LaunchedEffect(s.query) {
         delay(300)
         vm.loadMembers()
     }
 
     AdminScaffold(nav = nav, hideTitle = true, showHamburger = true) {
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(screenBg)
-                .statusBarsPadding() // ✅ fixes top crop
+                .statusBarsPadding()
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(Modifier.height(12.dp))
 
-            // Header
+            // Header card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = cardShape,
@@ -107,7 +128,7 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                                 DownloadHelper.downloadWithAuth(
                                     context = context,
                                     url = url,
-                                    token = t, // ✅ FIX (always String)
+                                    token = t,
                                     fileName = "members-summary.pdf",
                                     mimeType = "application/pdf"
                                 )
@@ -124,7 +145,7 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                                 DownloadHelper.downloadWithAuth(
                                     context = context,
                                     url = url,
-                                    token = t, // ✅ FIX (always String)
+                                    token = t,
                                     fileName = "members-summary.xlsx",
                                     mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                                 )
@@ -144,7 +165,7 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
 
             Spacer(Modifier.height(12.dp))
 
-            // ✅ Smaller modern search (instant)
+            // Search (no button)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = cardShape,
@@ -160,11 +181,7 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                         singleLine = true
                     )
                     Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = "Updates automatically",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = subtleText
-                    )
+                    Text("Updates automatically", style = MaterialTheme.typography.bodySmall, color = subtleText)
                 }
             }
 
@@ -193,14 +210,19 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                     val totalDeposited = m.totalDeposited ?: 0.0
 
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { nav.navigate("admin_member_details/$memberId") },
+                        modifier = Modifier.fillMaxWidth(),
                         shape = cardShape,
                         colors = CardDefaults.cardColors(containerColor = cardBg),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Column(Modifier.padding(16.dp)) {
+                        Column(
+                            Modifier
+                                .clickable {
+                                    confirmEditId = memberId
+                                    confirmEditName = name
+                                }
+                                .padding(16.dp)
+                        ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -224,9 +246,8 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                                     )
                                 }
 
-                                Spacer(Modifier.width(10.dp))
+                                Spacer(Modifier.width(8.dp))
 
-                                // ✅ Total Deposited pill badge
                                 Box(
                                     modifier = Modifier
                                         .background(
@@ -242,6 +263,15 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
+
+                                IconButton(
+                                    onClick = {
+                                        confirmDeleteId = memberId
+                                        confirmDeleteName = name
+                                    }
+                                ) {
+                                    Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                                }
                             }
 
                             Spacer(Modifier.height(14.dp))
@@ -252,20 +282,12 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                             ) {
                                 Column {
                                     Text("Share", style = MaterialTheme.typography.labelSmall, color = subtleText)
-                                    Text(
-                                        text = share.toString(),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium
-                                    )
+                                    Text(share.toString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                                 }
 
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text("Deposits", style = MaterialTheme.typography.labelSmall, color = subtleText)
-                                    Text(
-                                        text = deposits.toString(),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium
-                                    )
+                                    Text(deposits.toString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                                 }
                             }
                         }
@@ -273,6 +295,53 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                 }
 
                 item { Spacer(Modifier.height(16.dp)) }
+            }
+
+            // ✅ confirm update
+            if (confirmEditId != null) {
+                AlertDialog(
+                    onDismissRequest = { confirmEditId = null },
+                    title = { Text("Update member?") },
+                    text = { Text("Do you want to update “$confirmEditName”?") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            val id = confirmEditId ?: return@TextButton
+                            confirmEditId = null
+                            nav.navigate("admin_member_details/$id")
+                        }) { Text("Yes") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { confirmEditId = null }) { Text("Cancel") }
+                    }
+                )
+            }
+
+            // ✅ confirm delete
+            if (confirmDeleteId != null) {
+                AlertDialog(
+                    onDismissRequest = { confirmDeleteId = null },
+                    title = { Text("Delete member?") },
+                    text = { Text("This will permanently delete “$confirmDeleteName”.") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            val id = confirmDeleteId ?: return@TextButton
+                            confirmDeleteId = null
+
+                            scope.launch {
+                                try {
+                                    repo.adminDeleteMember(id)
+                                    Toast.makeText(context, "Deleted", Toast.LENGTH_SHORT).show()
+                                    vm.loadMembers()
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, e.message ?: "Delete failed", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }) { Text("Delete") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { confirmDeleteId = null }) { Text("Cancel") }
+                    }
+                )
             }
         }
     }
