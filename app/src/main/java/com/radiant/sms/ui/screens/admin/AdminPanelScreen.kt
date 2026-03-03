@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.Repository
@@ -32,13 +33,6 @@ fun AdminPanelScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var members by remember { mutableStateOf<List<AdminMemberDto>>(emptyList()) }
 
-    fun loadMembers() {
-        loading = true
-        error = null
-        // Using LaunchedEffect below; this is only helper
-    }
-
-    // Listen for refresh flag from Create/Update screens
     val refreshFlagFlow = remember(nav) {
         nav.currentBackStackEntry?.savedStateHandle?.getStateFlow("members_refresh", false)
     }
@@ -66,7 +60,6 @@ fun AdminPanelScreen(
             .padding(16.dp)
     ) {
 
-        // Actions row (keep)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -89,7 +82,7 @@ fun AdminPanelScreen(
 
         Spacer(Modifier.height(14.dp))
 
-        // Header row like screenshot: Member | Share | Deposits
+        // Header row: Member | Share | Deposits
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(22.dp),
@@ -107,19 +100,19 @@ fun AdminPanelScreen(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
-
                 Text(
                     text = "Share",
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
                 )
-
                 Text(
                     text = "Deposits",
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.End
                 )
             }
         }
@@ -127,29 +120,20 @@ fun AdminPanelScreen(
         Spacer(Modifier.height(12.dp))
 
         when {
-            loading -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+            loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
 
-            error != null -> {
-                Text(
-                    text = error ?: "",
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
+            error != null -> Text(error ?: "", color = MaterialTheme.colorScheme.error)
 
-            else -> {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(members) { member ->
-                        AdminMemberCard(
-                            member = member,
-                            onClick = {
-                                member.id?.let { onMemberClick(it.toInt()) }
-                            }
-                        )
-                    }
+            else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(members) { member ->
+                    AdminMemberCard(
+                        member = member,
+                        onClick = {
+                            member.id?.let { onMemberClick(it.toInt()) }
+                        }
+                    )
                 }
             }
         }
@@ -163,6 +147,7 @@ private fun AdminMemberCard(
 ) {
     val shareCount = member.share ?: 0
     val depositCount = member.depositsCount ?: 0
+    val totalAmount = member.totalDeposited ?: 0.0
 
     Card(
         modifier = Modifier
@@ -188,6 +173,7 @@ private fun AdminMemberCard(
 
             Spacer(Modifier.height(18.dp))
 
+            // Bottom row: Share (left) | Deposits count (center) | Total amount (right)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -201,7 +187,16 @@ private fun AdminMemberCard(
                 Text(
                     text = "Deposits: $depositCount",
                     modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center
+                )
+
+                Text(
+                    text = "৳ ${formatMoney(totalAmount)}",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.End
                 )
             }
         }
@@ -209,9 +204,5 @@ private fun AdminMemberCard(
 }
 
 private fun formatMoney(value: Double): String {
-    return if (value % 1.0 == 0.0) {
-        "${value.toInt()}.0"
-    } else {
-        value.toString()
-    }
+    return if (value % 1.0 == 0.0) "${value.toInt()}.0" else value.toString()
 }
