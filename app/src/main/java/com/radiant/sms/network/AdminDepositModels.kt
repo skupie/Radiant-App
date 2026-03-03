@@ -11,22 +11,24 @@ data class AdminDepositsResponse(
 data class AdminDepositItem(
     val id: Long = 0L,
 
-    // Sometimes API returns nested member, sometimes it doesn't
+    // ✅ Some APIs send member_id flat
+    @Json(name = "member_id")
+    val memberId: Long? = null,
+
+    // ✅ Some APIs send nested member object
     val member: AdminDepositMember? = null,
 
-    // Common flat name fields from Laravel resources
+    // ✅ Some APIs send member name flat
     @Json(name = "member_name")
     val memberName: String? = null,
 
     @Json(name = "member_full_name")
     val memberFullName: String? = null,
 
-    // Some APIs return `name` directly in the deposit item
+    // Some APIs might use `name` key
     val name: String? = null,
 
     val year: Int? = null,
-
-    // backend can send "2" / "02" / "Feb"
     val month: String? = null,
 
     @Json(name = "base_amount")
@@ -35,10 +37,8 @@ data class AdminDepositItem(
     @Json(name = "total_amount")
     val totalAmount: Double? = null,
 
-    // "Cash" / "Bkash" / "Bank"
     val type: String? = null,
 
-    // Timestamp keys (we support multiple)
     @Json(name = "deposited_at")
     val depositedAt: String? = null,
 
