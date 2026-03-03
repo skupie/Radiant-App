@@ -64,12 +64,12 @@ fun AppNavHost() {
         composable(Rts.ADMIN_DEPOSITS) { AdminDepositsScreen(navController) }
         composable(Rts.ADMIN_DUE_AMOUNTS) { AdminDueAmountsScreen(navController) }
 
-        // Create Member
+        // Create Member (keep route if you still use elsewhere)
         composable(Rts.ADMIN_CREATE_MEMBER) {
             AdminCreateMemberScreen(navController)
         }
 
-        // Member details by ID
+        // Member details by ID (keep route if you still use elsewhere)
         composable(
             route = "${Rts.ADMIN_MEMBER_DETAILS}/{memberId}",
             arguments = listOf(navArgument("memberId") { type = NavType.LongType })
@@ -89,17 +89,9 @@ fun AppNavHost() {
             )
         }
 
-        // ✅ Admin Panel (PASS navController so refresh works)
+        // ✅ Admin Panel (UPDATED call)
         composable(Rts.ADMIN_PANEL) {
-            AdminPanelScreen(
-                nav = navController,
-                onMemberClick = { memberId ->
-                    navController.navigate("${Rts.ADMIN_MEMBER_DETAILS}/$memberId")
-                },
-                onCreateMemberClick = { navController.navigate(Rts.ADMIN_CREATE_MEMBER) },
-                onExportPdfClick = { },
-                onExportExcelClick = { }
-            )
+            AdminPanelScreen(nav = navController)
         }
     }
 }
