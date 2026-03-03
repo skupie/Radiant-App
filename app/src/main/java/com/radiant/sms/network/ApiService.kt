@@ -92,7 +92,7 @@ interface ApiService {
         @Query("per_page") perPage: Int? = null
     ): AnyJson
 
-    // ✅ New (typed + filters + pagination + summary total)
+    // ✅ Typed + filters + pagination + summary total
     @Headers("Accept: application/json")
     @GET("api/admin/deposits")
     suspend fun adminDepositsList(
@@ -103,19 +103,19 @@ interface ApiService {
         @Query("page") page: Int = 1
     ): AdminDepositsResponse
 
-    // ✅ Create deposit
+    // ✅ Create deposit (FIXED: use request class, not Map/Wildcard)
     @Headers("Accept: application/json")
     @POST("api/admin/deposits")
     suspend fun adminCreateDeposit(
-        @Body body: AnyJson
+        @Body body: AdminDepositUpsertRequest
     ): AnyJson
 
-    // ✅ Update deposit
+    // ✅ Update deposit (FIXED)
     @Headers("Accept: application/json")
     @PUT("api/admin/deposits/{id}")
     suspend fun adminUpdateDeposit(
         @Path("id") id: Long,
-        @Body body: AnyJson
+        @Body body: AdminDepositUpsertRequest
     ): AnyJson
 
     // ✅ Delete deposit
