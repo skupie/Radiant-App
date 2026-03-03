@@ -1,42 +1,48 @@
 package com.radiant.sms.network
 
-import com.google.gson.annotations.SerializedName
+import com.squareup.moshi.Json
 
 data class AdminDepositsResponse(
-    val data: List<AdminDepositItem>,
-    val meta: AdminDepositMeta?,
-    val summary: AdminDepositSummary?
+    val data: List<AdminDepositItem> = emptyList(),
+    val meta: AdminDepositMeta? = null,
+    val summary: AdminDepositSummary? = null
 )
 
 data class AdminDepositItem(
-    val id: Int,
-    val member: AdminDepositMember?,
-    val year: Int?,
-    val month: String?,
-    @SerializedName("base_amount")
-    val baseAmount: Double?,
-    @SerializedName("total_amount")
-    val totalAmount: Double?,
-    val type: String?,
-    @SerializedName("logged_at")
-    val loggedAt: String?
+    val id: Long = 0L,
+    val member: AdminDepositMember? = null,
+    val year: Int? = null,
+    val month: String? = null,
+
+    @Json(name = "base_amount")
+    val baseAmount: Double? = null,
+
+    @Json(name = "total_amount")
+    val totalAmount: Double? = null,
+
+    val type: String? = null,
+
+    @Json(name = "logged_at")
+    val loggedAt: String? = null
 )
 
 data class AdminDepositMember(
-    val id: Int,
-    val name: String?
+    val id: Long = 0L,
+    val name: String? = null
 )
 
 data class AdminDepositMeta(
-    @SerializedName("current_page")
-    val currentPage: Int?,
-    @SerializedName("last_page")
-    val lastPage: Int?
+    @Json(name = "current_page")
+    val currentPage: Int? = null,
+
+    @Json(name = "last_page")
+    val lastPage: Int? = null
 )
 
 data class AdminDepositSummary(
-    @SerializedName("filtered_total")
-    val filteredTotal: Double?,
-    @SerializedName("available_years")
-    val availableYears: List<Int>?
+    @Json(name = "filtered_total")
+    val filteredTotal: Double? = null,
+
+    @Json(name = "available_years")
+    val availableYears: List<Int>? = null
 )
