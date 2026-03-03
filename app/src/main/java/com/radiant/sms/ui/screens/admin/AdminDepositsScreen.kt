@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -192,6 +191,12 @@ fun AdminDepositsScreen(nav: NavController) {
         return raw
     }
 
+    fun normalizeTypeLabel(raw: String?): String {
+        val t = raw?.trim().orEmpty()
+        if (t.isBlank()) return "-"
+        return t.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+    }
+
     fun load(pageToLoad: Int = page.toInt()) {
         scope.launch {
             loading = true
@@ -276,6 +281,44 @@ fun AdminDepositsScreen(nav: NavController) {
         val start = (current - 2).coerceAtLeast(1)
         val end = (current + 2).coerceAtMost(last)
         return (start..end).toList()
+    }
+
+    @Composable
+    fun TypeBadge(type: String) {
+        val label = normalizeTypeLabel(type)
+        Box(
+            modifier = Modifier
+                .background(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                    shape = chipShape
+                )
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = label,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+
+    @Composable
+    fun DeletePill(onClick: () -> Unit) {
+        Box(
+            modifier = Modifier
+                .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f), chipShape)
+                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.06f), chipShape)
+                .clickable { onClick() }
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = "Delete",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium
+            )
+        }
     }
 
     AdminScaffold(nav = nav, hideTitle = true, showHamburger = true) {
@@ -422,6 +465,7 @@ fun AdminDepositsScreen(nav: NavController) {
                     ) {
                         Column(Modifier.padding(16.dp)) {
 
+                            // Top row: Member + trailing Delete pill
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
@@ -435,34 +479,32 @@ fun AdminDepositsScreen(nav: NavController) {
                                     modifier = Modifier.weight(1f)
                                 )
 
-                                // ✅ Total badge pill (financial style)
-                                Box(
-                                    modifier = Modifier
-                                        .background(
-                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                                            shape = chipShape
-                                        )
-                                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        text = "Total ${d.totalAmount ?: 0.0}",
-                                        color = MaterialTheme.colorScheme.primary,
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
+                                Spacer(Modifier.width(10.dp))
+
+                                DeletePill(onClick = { deleteId = d.id })
                             }
 
-                            Spacer(Modifier.height(6.dp))
+                            Spacer(Modifier.height(10.dp))
 
-                            Text(
-                                text = displayMonthYear(d.month, d.year),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = subtleText
-                            )
+                            // Month + Type badge row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = displayMonthYear(d.month, d.year),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = subtleText,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                TypeBadge(type = d.type ?: "-")
+                            }
 
                             Spacer(Modifier.height(12.dp))
 
+                            // Base + Total row
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
@@ -475,10 +517,11 @@ fun AdminDepositsScreen(nav: NavController) {
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
+
                                 Column {
-                                    Text("Type", style = MaterialTheme.typography.labelSmall, color = subtleText)
+                                    Text("Total", style = MaterialTheme.typography.labelSmall, color = subtleText)
                                     Text(
-                                        (d.type ?: "-").replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
+                                        "${d.totalAmount ?: 0.0}",
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Medium
                                     )
@@ -493,25 +536,11 @@ fun AdminDepositsScreen(nav: NavController) {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = subtleText
                             )
-
-                            Spacer(Modifier.height(14.dp))
-
-                            // ✅ Delete becomes red outlined action (fintech style)
-                            OutlinedButton(
-                                modifier = Modifier.fillMaxWidth(),
-                                onClick = { deleteId = d.id }
-                            ) {
-                                Text(
-                                    "Delete",
-                                    color = MaterialTheme.colorScheme.error,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
                         }
                     }
                 }
 
-                // ✅ Pagination chip row (modern)
+                // Pagination chip row
                 if (lastPage > 1) {
                     item {
                         Spacer(Modifier.height(4.dp))
@@ -578,7 +607,7 @@ fun AdminDepositsScreen(nav: NavController) {
             }
         }
 
-        // ---- Member Picker (applies immediately) ----
+        // Member Picker
         if (showMemberPicker) {
             AlertDialog(
                 onDismissRequest = { showMemberPicker = false },
@@ -610,7 +639,7 @@ fun AdminDepositsScreen(nav: NavController) {
             )
         }
 
-        // ---- Year Picker (applies immediately) ----
+        // Year Picker
         if (showYearPicker) {
             AlertDialog(
                 onDismissRequest = { showYearPicker = false },
@@ -649,7 +678,7 @@ fun AdminDepositsScreen(nav: NavController) {
             )
         }
 
-        // ---- Delete confirm ----
+        // Delete confirm
         if (deleteId != null) {
             AlertDialog(
                 onDismissRequest = { deleteId = null },
@@ -674,7 +703,7 @@ fun AdminDepositsScreen(nav: NavController) {
             )
         }
 
-        // ---- Add sheet ----
+        // Add sheet (unchanged)
         if (showAddSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showAddSheet = false },
