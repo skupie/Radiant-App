@@ -1,7 +1,6 @@
 package com.radiant.sms.ui.screens.admin
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,21 +11,36 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,53 +52,32 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.Repository
-import com.radiant.sms.network.AdminMemberDto
+import com.radiant.sms.network.AdminActivityDto
+import com.radiant.sms.network.AdminTeamMemberDto
+import com.radiant.sms.network.AdminTeamMemberUpsertRequest
 import com.radiant.sms.network.NetworkModule
-import java.util.Locale
 
+/**
+ * Admin Panel:
+ *  - Admin Activity feed
+ *  - Team Members management (create / edit / delete + role)
+ *
+ * (Per request) No Member list, and no PDF/Excel export buttons here.
+ */
 @Composable
 fun AdminPanelScreen(
     nav: NavController,
-    modifier: Modifier = Modifier,
-    onMemberClick: (Int) -> Unit,
-    onCreateMemberClick: () -> Unit,
-    onExportPdfClick: () -> Unit,
-    onExportExcelClick: () -> Unit
+    modifier: Modifier = Modifier
 ) {
     val api = remember { NetworkModule.api(nav.context) }
     val repo = remember { Repository(api) }
 
-    var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var members by remember { mutableStateOf<List<AdminMemberDto>>(emptyList()) }
-
-    val refreshFlagFlow = remember(nav) {
-        nav.currentBackStackEntry?.savedStateHandle?.getStateFlow("members_refresh", false)
-    }
-    val refreshFlag by refreshFlagFlow?.collectAsState() ?: remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit, refreshFlag) {
-        if (refreshFlag) {
-            nav.currentBackStackEntry?.savedStateHandle?.set("members_refresh", false)
-        }
-
-        loading = true
-        error = null
-        try {
-            members = repo.adminMembersAll()
-        } catch (e: Exception) {
-            error = e.message ?: "Failed to load"
-        } finally {
-            loading = false
-        }
-    }
-
-    // ---- Fintech style ----
     val screenBg = Color(0xFFF6F7FB)
     val cardBg = Color.White
     val subtleText = Color(0xFF6B7280)
     val cardShape = RoundedCornerShape(22.dp)
-    val chipShape = RoundedCornerShape(999.dp)
+
+    var tabIndex by remember { mutableIntStateOf(0) }
 
     Column(
         modifier = modifier
@@ -95,7 +88,6 @@ fun AdminPanelScreen(
     ) {
         Spacer(Modifier.height(12.dp))
 
-        // Header Card (matches Deposits page look)
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = cardShape,
@@ -104,159 +96,471 @@ fun AdminPanelScreen(
         ) {
             Column(Modifier.padding(16.dp)) {
                 Text(
-                    text = "Members",
+                    text = "Admin",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(10.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Button(
-                        modifier = Modifier.weight(1f),
-                        onClick = onCreateMemberClick
-                    ) { Text("Create Member") }
-
-                    OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = onExportPdfClick
-                    ) { Text("PDF") }
-
-                    OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = onExportExcelClick
-                    ) { Text("Excel") }
+                TabRow(selectedTabIndex = tabIndex) {
+                    Tab(
+                        selected = tabIndex == 0,
+                        onClick = { tabIndex = 0 },
+                        text = { Text("Activity") }
+                    )
+                    Tab(
+                        selected = tabIndex == 1,
+                        onClick = { tabIndex = 1 },
+                        text = { Text("Team Members") }
+                    )
                 }
             }
         }
 
         Spacer(Modifier.height(14.dp))
 
-        when {
-            loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+        when (tabIndex) {
+            0 -> AdminActivityTab(
+                repo = repo,
+                cardBg = cardBg,
+                subtleText = subtleText,
+                cardShape = cardShape
+            )
 
-            error != null -> Text(error ?: "", color = MaterialTheme.colorScheme.error)
-
-            else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(members) { member ->
-                    AdminMemberCardModern(
-                        member = member,
-                        cardBg = cardBg,
-                        subtleText = subtleText,
-                        cardShape = cardShape,
-                        chipShape = chipShape,
-                        onClick = { member.id?.let { onMemberClick(it.toInt()) } }
-                    )
-                }
-                item { Spacer(Modifier.height(16.dp)) }
-            }
+            else -> AdminTeamMembersTab(
+                repo = repo,
+                cardBg = cardBg,
+                subtleText = subtleText,
+                cardShape = cardShape
+            )
         }
     }
 }
 
 @Composable
-private fun AdminMemberCardModern(
-    member: AdminMemberDto,
+private fun AdminActivityTab(
+    repo: Repository,
     cardBg: Color,
     subtleText: Color,
-    cardShape: RoundedCornerShape,
-    chipShape: RoundedCornerShape,
-    onClick: () -> Unit
+    cardShape: RoundedCornerShape
 ) {
-    val shareCount = member.share ?: 0
-    val depositCount = member.depositsCount ?: 0
-    val totalAmount = member.totalDeposited ?: 0.0
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var items by remember { mutableStateOf<List<AdminActivityDto>>(emptyList()) }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        shape = cardShape,
-        colors = CardDefaults.cardColors(containerColor = cardBg),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(Modifier.padding(16.dp)) {
+    suspend fun load() {
+        loading = true
+        error = null
+        try {
+            items = repo.adminActivity()
+        } catch (e: Exception) {
+            error = e.message ?: "Failed to load activity"
+        } finally {
+            loading = false
+        }
+    }
 
-            // Top row: Name + Total deposited badge
-            Row(
+    LaunchedEffect(Unit) { load() }
+
+    when {
+        loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+
+        error != null -> {
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                shape = cardShape,
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = member.fullName ?: "Unnamed Member",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                Column(Modifier.padding(16.dp)) {
+                    Text("Couldn’t load activity", fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = member.email ?: "",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = subtleText,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                Spacer(Modifier.width(10.dp))
-
-                // Total deposited pill (fintech style like deposit page)
-                Box(
-                    modifier = Modifier
-                        .background(
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                            shape = chipShape
-                        )
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = "BDT ${formatBDT(totalAmount)}",
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Text(error ?: "", color = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(onClick = { loading = true }) {
+                        Icon(Icons.Filled.Refresh, contentDescription = null)
+                        Text("Retry", modifier = Modifier.padding(start = 8.dp))
+                    }
                 }
             }
 
-            Spacer(Modifier.height(14.dp))
+            LaunchedEffect(loading) {
+                if (loading) load()
+            }
+        }
 
-            // Bottom row: Share | Deposits
-            Row(
+        items.isEmpty() -> {
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                shape = cardShape,
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column {
-                    Text("Share", style = MaterialTheme.typography.labelSmall, color = subtleText)
+                Column(Modifier.padding(16.dp)) {
+                    Text("No admin activity yet", fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
                     Text(
-                        text = shareCount.toString(),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Deposits", style = MaterialTheme.typography.labelSmall, color = subtleText)
-                    Text(
-                        text = depositCount.toString(),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
+                        "When admins create/update/delete team members or perform actions, they will appear here.",
+                        color = subtleText
                     )
                 }
             }
         }
+
+        else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(items) { a ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = cardShape,
+                    colors = CardDefaults.cardColors(containerColor = cardBg),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(
+                            text = a.action ?: "Activity",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = buildString {
+                                if (!a.actorName.isNullOrBlank()) append("By ${a.actorName}")
+                                if (!a.createdAt.isNullOrBlank()) {
+                                    if (isNotEmpty()) append("  •  ")
+                                    append(a.createdAt)
+                                }
+                            }.ifBlank { "" },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = subtleText
+                        )
+                        if (!a.description.isNullOrBlank()) {
+                            Spacer(Modifier.height(10.dp))
+                            Text(a.description ?: "", color = subtleText)
+                        }
+                    }
+                }
+            }
+            item { Spacer(Modifier.height(16.dp)) }
+        }
     }
 }
 
-private fun formatBDT(value: Double): String {
-    // Always 2 decimals, modern finance look
-    return String.format(Locale.getDefault(), "%.2f", value)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AdminTeamMembersTab(
+    repo: Repository,
+    cardBg: Color,
+    subtleText: Color,
+    cardShape: RoundedCornerShape
+) {
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var items by remember { mutableStateOf<List<AdminTeamMemberDto>>(emptyList()) }
+
+    var showDialog by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<AdminTeamMemberDto?>(null) }
+
+    var confirmDeleteId by remember { mutableStateOf<Long?>(null) }
+    var pendingDeleteId by remember { mutableStateOf<Long?>(null) }
+    var pendingUpsert by remember { mutableStateOf<Pair<Long?, AdminTeamMemberUpsertRequest>?>(null) }
+
+    suspend fun load() {
+        loading = true
+        error = null
+        try {
+            items = repo.adminTeamMembers()
+        } catch (e: Exception) {
+            error = e.message ?: "Failed to load team members"
+        } finally {
+            loading = false
+        }
+    }
+
+    LaunchedEffect(Unit) { load() }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = cardShape,
+        colors = CardDefaults.cardColors(containerColor = cardBg),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Team Members", fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text("Create, edit or delete team members and set their role.", color = subtleText)
+            }
+            IconButton(
+                onClick = {
+                    editing = null
+                    showDialog = true
+                }
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "Add")
+            }
+        }
+    }
+
+    Spacer(Modifier.height(12.dp))
+
+    when {
+        loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+
+        error != null -> Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = cardShape,
+            colors = CardDefaults.cardColors(containerColor = cardBg),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Text("Couldn’t load team members", fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(6.dp))
+                Text(error ?: "", color = MaterialTheme.colorScheme.error)
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(onClick = { loading = true }) {
+                    Icon(Icons.Filled.Refresh, contentDescription = null)
+                    Text("Retry", modifier = Modifier.padding(start = 8.dp))
+                }
+            }
+        }
+
+        else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(items) { u ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = cardShape,
+                    colors = CardDefaults.cardColors(containerColor = cardBg),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    text = u.name ?: "Unnamed",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Text(u.email ?: "", style = MaterialTheme.typography.bodySmall, color = subtleText)
+                            }
+
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Role", style = MaterialTheme.typography.labelSmall, color = subtleText)
+                                Text(
+                                    text = (u.role ?: "-").uppercase(),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(10.dp))
+                        Divider()
+                        Spacer(Modifier.height(6.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    editing = u
+                                    showDialog = true
+                                }
+                            ) {
+                                Icon(Icons.Filled.Edit, contentDescription = "Edit")
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    val id = u.id ?: return@IconButton
+                                    confirmDeleteId = id
+                                }
+                            ) {
+                                Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                            }
+                        }
+                    }
+                }
+            }
+            item { Spacer(Modifier.height(16.dp)) }
+        }
+    }
+
+    LaunchedEffect(loading) {
+        if (loading) load()
+    }
+
+    if (confirmDeleteId != null) {
+        AlertDialog(
+            onDismissRequest = { confirmDeleteId = null },
+            title = { Text("Delete team member?") },
+            text = { Text("This cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val id = confirmDeleteId
+                        confirmDeleteId = null
+                        if (id == null) return@TextButton
+                        pendingDeleteId = id
+                    }
+                ) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { confirmDeleteId = null }) { Text("Cancel") } }
+        )
+    }
+
+    LaunchedEffect(pendingDeleteId) {
+        val id = pendingDeleteId ?: return@LaunchedEffect
+        pendingDeleteId = null
+        loading = true
+        error = null
+        try {
+            repo.adminDeleteTeamMember(id)
+            load()
+        } catch (e: Exception) {
+            error = e.message ?: "Delete failed"
+        } finally {
+            loading = false
+        }
+    }
+
+    if (showDialog) {
+        TeamMemberUpsertDialog(
+            initial = editing,
+            onDismiss = { showDialog = false },
+            onSave = { req ->
+                showDialog = false
+                loading = true
+                error = null
+                pendingUpsert = Pair(editing?.id, req)
+            }
+        )
+    }
+
+    LaunchedEffect(pendingUpsert) {
+        val payload = pendingUpsert ?: return@LaunchedEffect
+        pendingUpsert = null
+
+        val id = payload.first
+        val req = payload.second
+        loading = true
+        error = null
+        try {
+            if (id == null) repo.adminCreateTeamMember(req) else repo.adminUpdateTeamMember(id, req)
+            load()
+        } catch (e: Exception) {
+            error = e.message ?: "Save failed"
+        } finally {
+            loading = false
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TeamMemberUpsertDialog(
+    initial: AdminTeamMemberDto?,
+    onDismiss: () -> Unit,
+    onSave: (AdminTeamMemberUpsertRequest) -> Unit
+) {
+    var name by remember { mutableStateOf(initial?.name ?: "") }
+    var email by remember { mutableStateOf(initial?.email ?: "") }
+    var password by remember { mutableStateOf("") }
+    var role by remember { mutableStateOf(initial?.role ?: "admin") }
+
+    val roles = listOf("admin", "editor", "viewer")
+    var roleMenu by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (initial == null) "Create Team Member" else "Edit Team Member") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text(if (initial == null) "Password" else "Password (leave blank to keep)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Box(Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = role,
+                        onValueChange = { },
+                        readOnly = true,
+                        label = { Text("Role") },
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            IconButton(onClick = { roleMenu = true }) {
+                                Icon(Icons.Filled.Edit, contentDescription = "Role")
+                            }
+                        }
+                    )
+                    DropdownMenu(expanded = roleMenu, onDismissRequest = { roleMenu = false }) {
+                        roles.forEach { r ->
+                            DropdownMenuItem(
+                                text = { Text(r.uppercase()) },
+                                onClick = {
+                                    role = r
+                                    roleMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(
+                        AdminTeamMemberUpsertRequest(
+                            name = name.trim().ifBlank { null },
+                            email = email.trim().ifBlank { null },
+                            password = password.ifBlank { null },
+                            role = role.trim().ifBlank { null }
+                        )
+                    )
+                },
+                enabled = name.trim().isNotBlank() && email.trim().isNotBlank()
+            ) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }
