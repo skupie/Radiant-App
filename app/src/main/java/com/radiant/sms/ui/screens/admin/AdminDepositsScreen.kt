@@ -47,6 +47,9 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.time.OffsetDateTime
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,7 +76,6 @@ fun AdminDepositsScreen(nav: NavController) {
     var members by remember { mutableStateOf<List<Pair<Long, String>>>(emptyList()) }
     var availableYears by remember { mutableStateOf<List<Int>>(emptyList()) }
 
-    // ✅ Build map from dropdown list (memberId -> memberName)
     val memberNameMap = remember(members) {
         members.filter { it.first != 0L }.associate { it.first to it.second }
     }
@@ -97,7 +99,7 @@ fun AdminDepositsScreen(nav: NavController) {
     var formYear by remember { mutableStateOf<Int?>(null) }
     var formMonth by remember { mutableStateOf("Feb") }
     var formBaseAmount by remember { mutableStateOf("") }
-    var formType by remember { mutableStateOf("Cash") }
+    var formType by remember { mutableStateOf("Cash") } // UI label
     var formNotes by remember { mutableStateOf("") }
     var formDepositedAt by remember { mutableStateOf("") }
 
@@ -132,7 +134,6 @@ fun AdminDepositsScreen(nav: NavController) {
         return if (y.isNotBlank()) "$monthLabel $y" else monthLabel
     }
 
-    // ✅ Always show member name using dropdown map fallback
     fun bestMemberName(d: AdminDepositItem): String {
         val nested = d.member?.name?.trim()
         if (!nested.isNullOrEmpty()) return nested
@@ -155,10 +156,48 @@ fun AdminDepositsScreen(nav: NavController) {
         return "Member"
     }
 
-    fun bestDepositedAt(d: AdminDepositItem): String {
+    fun bestDepositedAtRaw(d: AdminDepositItem): String {
         return listOf(d.depositedAt, d.loggedAt, d.createdAt)
             .firstOrNull { !it.isNullOrBlank() }
             ?: "-"
+    }
+
+    // ✅ Format to: yyyy-MM-dd HH:mm
+    fun formatDepositedAt(raw: String): String {
+        if (raw.isBlank() || raw == "-") return "-"
+
+        val outFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.getDefault())
+
+        // 1) ISO with Z / offset
+        try {
+            val odt = OffsetDateTime.parse(raw)
+            return odt.toLocalDateTime().format(outFmt)
+        } catch (_: Exception) {}
+
+        // 2) ISO local without offset
+        try {
+            val ldt = LocalDateTime.parse(raw)
+            return ldt.format(outFmt)
+        } catch (_: Exception) {}
+
+        // 3) "yyyy-MM-dd HH:mm:ss"
+        try {
+            val sdfIn = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            val d = sdfIn.parse(raw) ?: return raw
+            val sdfOut = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+            return sdfOut.format(d)
+        } catch (_: Exception) {}
+
+        // 4) "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'" (Laravel style)
+        try {
+            val sdfIn = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", Locale.US)
+            sdfIn.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            val d = sdfIn.parse(raw) ?: return raw
+            val sdfOut = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+            return sdfOut.format(d)
+        } catch (_: Exception) {}
+
+        return raw
     }
 
     fun load(pageToLoad: Int = page.toInt()) {
@@ -212,11 +251,9 @@ fun AdminDepositsScreen(nav: NavController) {
         load(1)
     }
 
-    // ✅ Year options: include currentYear and currentYear+1 always
-    val filterYearOptions = remember(availableYears, currentYear) {
+    val yearOptions = remember(availableYears, currentYear) {
         (availableYears + currentYear + (currentYear + 1)).distinct().sorted()
     }
-    val formYearOptions = filterYearOptions
 
     AdminScaffold(nav = nav, hideTitle = false, showHamburger = true) {
         Spacer(Modifier.height(8.dp))
@@ -317,9 +354,10 @@ fun AdminDepositsScreen(nav: NavController) {
 
                         Spacer(Modifier.height(6.dp))
 
+                        val depositedRaw = bestDepositedAtRaw(d)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Type: ${d.type ?: "-"}", style = MaterialTheme.typography.bodySmall)
-                            Text("Deposited: ${bestDepositedAt(d)}", style = MaterialTheme.typography.bodySmall)
+                            Text("Deposited: ${formatDepositedAt(depositedRaw)}", style = MaterialTheme.typography.bodySmall)
                         }
 
                         Spacer(Modifier.height(10.dp))
@@ -373,7 +411,7 @@ fun AdminDepositsScreen(nav: NavController) {
             )
         }
 
-        // ✅ Year picker (filters) — now includes currentYear+1
+        // Year picker (filters)
         if (showYearPicker) {
             AlertDialog(
                 onDismissRequest = { showYearPicker = false },
@@ -392,7 +430,7 @@ fun AdminDepositsScreen(nav: NavController) {
                                     .padding(vertical = 10.dp)
                             )
                         }
-                        items(filterYearOptions) { y ->
+                        items(yearOptions) { y ->
                             Text(
                                 y.toString(),
                                 modifier = Modifier
@@ -511,12 +549,15 @@ fun AdminDepositsScreen(nav: NavController) {
                                 else -> 2
                             }
 
+                            // ✅ IMPORTANT: type must be lowercase for Laravel validation
+                            val normalizedType = formType.trim().lowercase(Locale.getDefault())
+
                             val req = AdminDepositUpsertRequest(
                                 memberId = memberId,
                                 year = year,
-                                month = monthNumber.toString(),
+                                month = monthNumber, // ✅ Int (not String)
                                 baseAmount = base,
-                                type = formType,
+                                type = normalizedType, // ✅ cash/bkash/bank
                                 notes = formNotes.takeIf { it.isNotBlank() },
                                 depositedAt = formDepositedAt
                             )
@@ -562,14 +603,13 @@ fun AdminDepositsScreen(nav: NavController) {
                     )
                 }
 
-                // ✅ Form year picker — includes currentYear+1 always
                 if (showFormYearPicker) {
                     AlertDialog(
                         onDismissRequest = { showFormYearPicker = false },
                         title = { Text("Select year") },
                         text = {
                             LazyColumn {
-                                items(formYearOptions) { y ->
+                                items(yearOptions) { y ->
                                     Text(
                                         y.toString(),
                                         modifier = Modifier
