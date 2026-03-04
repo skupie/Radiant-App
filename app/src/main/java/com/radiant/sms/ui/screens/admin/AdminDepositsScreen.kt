@@ -384,15 +384,18 @@ fun AdminDepositsScreen(nav: NavController) {
         }
     }
 
-    AdminScaffold(nav = nav, hideTitle = true, showHamburger = true) {
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF6F7FB))
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp)
-        ) {
+    AdminScaffold(
+    nav = nav,
+    title = "Deposits",
+    hideTitle = false,
+    showHamburger = true
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF6F7FB))
+            .padding(horizontal = 16.dp) // ✅ no statusBarsPadding here
+    ) {
             Spacer(Modifier.height(12.dp))
 
             // Header
