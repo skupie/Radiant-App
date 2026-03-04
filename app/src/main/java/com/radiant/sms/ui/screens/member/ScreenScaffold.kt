@@ -35,6 +35,7 @@ import androidx.navigation.NavController
 import com.radiant.sms.data.TokenStore
 import com.radiant.sms.ui.Routes
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Groups
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,6 +87,17 @@ fun ScreenScaffold(
                     icon = { Icon(Icons.Filled.Warning, null) },
                     onClick = { closeDrawerThen { nav.navigate(Routes.MEMBER_DUE_SUMMARY) } }
                 )
+
+                NavigationDrawerItem(
+    label = { Text("Share Information") },
+    selected = false,
+    icon = { Icon(Icons.Filled.Groups, null) },
+    onClick = {
+        closeDrawerThen {
+            nav.navigate(Routes.MEMBER_SHARE_DETAILS)
+        }
+    }
+)
 
                 NavigationDrawerItem(
                     label = { Text("Profile") },
