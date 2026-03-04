@@ -19,9 +19,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.compose.ui.platform.LocalContext
 import com.radiant.sms.data.Repository
 import com.radiant.sms.network.NetworkModule
-import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun MemberShareDetailsScreen(
@@ -50,9 +50,11 @@ fun MemberShareDetailsScreen(
             memberName = me.user.name ?: ""
             email = me.user.email ?: ""
 
-            // share info comes from same response in your API
-            shareCount = me.user.share_count ?: 0
-            totalDeposit = me.user.total_deposit ?: 0.0
+            // This endpoint already exists in your repository
+            val shares = repo.memberShareDetails()
+
+            shareCount = shares.totalShares
+            totalDeposit = shares.totalDeposits
 
         } catch (e: Exception) {
             error = e.message
@@ -69,6 +71,7 @@ fun MemberShareDetailsScreen(
     ) {
 
         if (loading) {
+
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -76,14 +79,17 @@ fun MemberShareDetailsScreen(
             ) {
                 CircularProgressIndicator()
             }
+
             return@ScreenScaffold
         }
 
         if (error != null) {
+
             Text(
                 text = error ?: "",
                 color = MaterialTheme.colorScheme.error
             )
+
             return@ScreenScaffold
         }
 
