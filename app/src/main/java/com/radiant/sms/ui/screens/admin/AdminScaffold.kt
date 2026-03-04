@@ -48,6 +48,7 @@ fun AdminScaffold(
     showHamburger: Boolean = true,
     content: @Composable () -> Unit
 ) {
+
     val context = LocalContext.current
     val tokenStore = remember { TokenStore(context) }
 
@@ -74,40 +75,41 @@ fun AdminScaffold(
         gesturesEnabled = showHamburger,
         drawerContent = {
             ModalDrawerSheet(modifier = Modifier.width(280.dp)) {
+
                 Spacer(modifier = Modifier.height(12.dp))
 
                 NavigationDrawerItem(
                     label = { Text("Dashboard") },
                     selected = false,
-                    icon = { Icon(Icons.Filled.Dashboard, contentDescription = null) },
+                    icon = { Icon(Icons.Filled.Dashboard, null) },
                     onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_DASHBOARD) { launchSingleTop = true } } }
                 )
 
                 NavigationDrawerItem(
                     label = { Text("Deposits") },
                     selected = false,
-                    icon = { Icon(Icons.Filled.AttachMoney, contentDescription = null) },
+                    icon = { Icon(Icons.Filled.AttachMoney, null) },
                     onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_DEPOSITS) { launchSingleTop = true } } }
                 )
 
                 NavigationDrawerItem(
                     label = { Text("Due Amounts") },
                     selected = false,
-                    icon = { Icon(Icons.Filled.Warning, contentDescription = null) },
+                    icon = { Icon(Icons.Filled.Warning, null) },
                     onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_DUE_AMOUNTS) { launchSingleTop = true } } }
                 )
 
                 NavigationDrawerItem(
                     label = { Text("Profile") },
                     selected = false,
-                    icon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                    icon = { Icon(Icons.Filled.Person, null) },
                     onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_PROFILE) { launchSingleTop = true } } }
                 )
 
                 NavigationDrawerItem(
                     label = { Text("Admin Panel") },
                     selected = false,
-                    icon = { Icon(Icons.Filled.AdminPanelSettings, contentDescription = null) },
+                    icon = { Icon(Icons.Filled.AdminPanelSettings, null) },
                     onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_PANEL) { launchSingleTop = true } } }
                 )
 
@@ -116,7 +118,7 @@ fun AdminScaffold(
                 NavigationDrawerItem(
                     label = { Text("Logout") },
                     selected = false,
-                    icon = { Icon(Icons.Filled.Logout, contentDescription = null) },
+                    icon = { Icon(Icons.Filled.Logout, null) },
                     onClick = {
                         scope.launch {
                             drawerState.close()
@@ -129,14 +131,15 @@ fun AdminScaffold(
             }
         }
     ) {
+
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            // keep contentWindowInsets disabled like before (drawer + custom paddings),
-            // but FIX the TopAppBar inset handling
+
+            // disable automatic insets (drawer compatibility)
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
+
             topBar = {
                 TopAppBar(
-                    // ✅ FIX: let TopAppBar apply status bar insets properly
                     windowInsets = TopAppBarDefaults.windowInsets,
                     title = { if (!hideTitle) Text(title) },
                     navigationIcon = {
@@ -149,15 +152,18 @@ fun AdminScaffold(
                 )
             }
         ) { innerPadding ->
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    // ✅ FIX: apply scaffold padding (includes top bar height)
                     .padding(innerPadding)
                     .padding(horizontal = 16.dp)
+                    // ✅ SMALL FIX: reduce top space globally
+                    .padding(top = 4.dp)
             ) {
                 content()
             }
+
         }
     }
 }
