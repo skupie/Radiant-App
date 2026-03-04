@@ -85,49 +85,44 @@ private fun Any?.asDouble(): Double? =
 private fun formatMoney(amount: Double): String = DecimalFormat("#,##0.00").format(amount)
 
 /**
- * ✅ Matches Laravel: /api/admin/due-summary
- * Each item:
- *  - member (MemberResource: full_name, nid, share, etc.)
- *  - due_total
- *  - due_months_count
+ * Matches Laravel /api/admin/due-summary:
+ * item: member{}, due_total, due_months_count
  */
-private fun parseAdminDueSummary(json: AnyJson): Pair<List<AdminDueRow>, Double?> {
+private fun parseAdminDueSummary(json: AnyJson): Pair<List<AdminDueRow>, Double> {
     val list = (json["data"] as? List<*>)?.mapNotNull { it as? Map<*, *> } ?: emptyList()
 
     val rows = list.map { raw ->
         val m = raw.entries.associate { (k, v) -> k.toString() to v }
-        val memberMap = m["member"].asMap()
+        val member = m["member"].asMap()
 
         val name = listOf(
-            memberMap?.get("full_name").asString(),
-            memberMap?.get("name").asString(),
+            member?.get("full_name").asString(),
+            member?.get("name").asString(),
             m["full_name"].asString(),
             m["name"].asString()
         ).firstOrNull { !it.isNullOrBlank() }?.trim().orEmpty().ifBlank { "Member" }
 
         val code = listOf(
-            memberMap?.get("nid").asString(),
+            member?.get("nid").asString(),
             m["nid"].asString(),
-            memberMap?.get("member_code").asString()
+            member?.get("member_code").asString()
         ).firstOrNull { !it.isNullOrBlank() }?.trim().orEmpty()
 
         val shareCount = listOf(
-            memberMap?.get("share_count").asInt(),
-            memberMap?.get("share").asInt(),
-            memberMap?.get("shares").asInt(),
+            member?.get("share_count").asInt(),
+            member?.get("share").asInt(),
+            member?.get("shares").asInt(),
             m["share_count"].asInt(),
             m["share"].asInt(),
             m["shares"].asInt()
         ).firstOrNull { it != null } ?: 0
 
-        // ✅ THIS is the key returned by Laravel controller
         val dueMonths = listOf(
             m["due_months_count"].asInt(),
             m["due_month_count"].asInt(),
             m["due_count"].asInt()
         ).firstOrNull { it != null } ?: 0
 
-        // ✅ THIS is the key returned by Laravel controller
         val totalDue = listOf(
             m["due_total"].asDouble(),
             m["total_due"].asDouble(),
@@ -143,16 +138,12 @@ private fun parseAdminDueSummary(json: AnyJson): Pair<List<AdminDueRow>, Double?
         )
     }
 
-    // Controller doesn't return a global total_due; compute locally
     val computedTotal = rows.sumOf { it.totalDue }
     return rows to computedTotal
 }
 
 @Composable
-private fun NumberBadge(
-    value: String,
-    modifier: Modifier = Modifier
-) {
+private fun NumberBadge(value: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .wrapContentWidth(Alignment.CenterHorizontally)
@@ -187,14 +178,15 @@ fun AdminDueAmountsScreen(nav: NavController) {
 
     var search by remember { mutableStateOf("") }
     var all by remember { mutableStateOf<List<AdminDueRow>>(emptyList()) }
-    var totalDue by remember { mutableStateOf(0.0) }
+    var totalDue by remember { mutableStateOf(0.0) } // ✅ Double (not nullable)
 
     val filtered = remember(search, all) {
         val q = search.trim().lowercase(Locale.getDefault())
         if (q.isBlank()) all
         else all.filter { r ->
-            listOf(r.memberName, r.memberCode)
-                .any { it.lowercase(Locale.getDefault()).contains(q) }
+            listOf(r.memberName, r.memberCode).any {
+                it.lowercase(Locale.getDefault()).contains(q)
+            }
         }
     }
 
@@ -203,7 +195,7 @@ fun AdminDueAmountsScreen(nav: NavController) {
             loading = true
             error = null
             try {
-                // Laravel validates per_page max 100
+                // Laravel max per_page usually 100
                 val json = repo.adminDueSummary(search = null, perPage = 100)
                 val (rows, computedTotal) = parseAdminDueSummary(json)
                 all = rows
@@ -234,7 +226,6 @@ fun AdminDueAmountsScreen(nav: NavController) {
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold
             )
-
             Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
@@ -356,10 +347,53 @@ fun AdminDueAmountsScreen(nav: NavController) {
                     } else {
                         LazyColumn(modifier = Modifier.fillMaxSize()) {
                             items(filtered) { row ->
-                                DueRowItem(
-                                    row = row,
-                                    subtleText = subtleText
-                                )
+                                // ✅ NOT clickable (prevents opening edit/update)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(2.2f)) {
+                                        Text(
+                                            text = row.memberName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        if (row.memberCode.isNotBlank()) {
+                                            Text(
+                                                text = row.memberCode,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = subtleText,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+
+                                    Box(modifier = Modifier.weight(0.85f), contentAlignment = Alignment.Center) {
+                                        NumberBadge(row.shareCount.toString())
+                                    }
+                                    Box(modifier = Modifier.weight(0.85f), contentAlignment = Alignment.Center) {
+                                        NumberBadge(row.dueMonths.toString())
+                                    }
+
+                                    Text(
+                                        formatMoney(row.totalDue),
+                                        modifier = Modifier
+                                            .weight(1.1f)
+                                            .padding(start = 6.dp),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        textAlign = TextAlign.End,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(Modifier.width(2.dp))
+                                }
+
                                 Divider()
                             }
                             item { Spacer(Modifier.height(8.dp)) }
@@ -368,60 +402,5 @@ fun AdminDueAmountsScreen(nav: NavController) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun DueRowItem(
-    row: AdminDueRow,
-    subtleText: Color
-) {
-    // ✅ Not clickable — prevents opening edit/update screens
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(2.2f)) {
-            Text(
-                text = row.memberName,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (row.memberCode.isNotBlank()) {
-                Text(
-                    text = row.memberCode,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = subtleText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-
-        Box(modifier = Modifier.weight(0.85f), contentAlignment = Alignment.Center) {
-            NumberBadge(value = row.shareCount.toString())
-        }
-
-        Box(modifier = Modifier.weight(0.85f), contentAlignment = Alignment.Center) {
-            NumberBadge(value = row.dueMonths.toString())
-        }
-
-        Text(
-            formatMoney(row.totalDue),
-            modifier = Modifier
-                .weight(1.1f)
-                .padding(start = 6.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.End,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        Spacer(Modifier.width(2.dp))
     }
 }
