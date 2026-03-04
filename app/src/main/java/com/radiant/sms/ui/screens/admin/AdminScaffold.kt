@@ -1,11 +1,10 @@
 package com.radiant.sms.ui.screens.admin
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
@@ -48,7 +47,6 @@ fun AdminScaffold(
     showHamburger: Boolean = true,
     content: @Composable () -> Unit
 ) {
-
     val context = LocalContext.current
     val tokenStore = remember { TokenStore(context) }
 
@@ -76,8 +74,6 @@ fun AdminScaffold(
         drawerContent = {
             ModalDrawerSheet(modifier = Modifier.width(280.dp)) {
 
-                Spacer(modifier = Modifier.height(12.dp))
-
                 NavigationDrawerItem(
                     label = { Text("Dashboard") },
                     selected = false,
@@ -92,7 +88,7 @@ fun AdminScaffold(
                     onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_DEPOSITS) { launchSingleTop = true } } }
                 )
 
-                // ✅ Rename in drawer
+                // ✅ Drawer name updated
                 NavigationDrawerItem(
                     label = { Text("Due Summary") },
                     selected = false,
@@ -127,20 +123,18 @@ fun AdminScaffold(
                         }
                     }
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
             }
         }
     ) {
-
         Scaffold(
             modifier = Modifier.fillMaxSize(),
 
-            // disable automatic insets (drawer compatibility)
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            // ✅ IMPORTANT: respect safe area (status/navigation bars) for ALL pages
+            contentWindowInsets = WindowInsets.safeDrawing,
 
             topBar = {
                 TopAppBar(
+                    // ✅ Top bar already handles status bar insets
                     windowInsets = TopAppBarDefaults.windowInsets,
                     title = { if (!hideTitle) Text(title) },
                     navigationIcon = {
@@ -153,17 +147,16 @@ fun AdminScaffold(
                 )
             }
         ) { innerPadding ->
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    // ✅ pushes content below TopAppBar + system insets
                     .padding(innerPadding)
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 4.dp)
+                    // ✅ your consistent page padding like screenshot
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 content()
             }
-
         }
     }
 }
