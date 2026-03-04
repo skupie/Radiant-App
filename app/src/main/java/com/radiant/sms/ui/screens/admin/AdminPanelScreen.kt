@@ -77,14 +77,18 @@ fun AdminPanelScreen(
     var tabIndex by remember { mutableIntStateOf(0) }
 
     // ✅ This makes the side drawer show without changing your layout
-    AdminScaffold(nav = nav) {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .background(screenBg)
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp)
-        ) {
+    AdminScaffold(
+    nav = nav,
+    title = "Admin Panel",
+    hideTitle = false,
+    showHamburger = true
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(screenBg)
+            .padding(horizontal = 16.dp) // ✅ no statusBarsPadding()
+    ) {
             Spacer(Modifier.height(12.dp))
 
             Card(
