@@ -19,54 +19,60 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
-/**
- * Screen scaffold used by MEMBER screens.
- * This restores the missing ScreenScaffold reference and fixes compilation.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScreenScaffold(
     nav: NavController,
     title: String = "",
-    showMenu: Boolean = true,
-    onMenuClick: (() -> Unit)? = null,
+    hideTitle: Boolean = true,
+    showHamburger: Boolean = true,
     content: @Composable () -> Unit
 ) {
+
     Scaffold(
-        // TopAppBar already handles system insets; avoid extra top gaps
         contentWindowInsets = TopAppBarDefaults.windowInsets,
+
         topBar = {
             TopAppBar(
                 windowInsets = TopAppBarDefaults.windowInsets,
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
+
                 title = {
-                    if (title.isNotBlank()) {
+                    if (!hideTitle && title.isNotBlank()) {
                         Text(
                             text = title,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 },
+
                 navigationIcon = {
-                    if (showMenu) {
-                        IconButton(onClick = { (onMenuClick ?: { nav.popBackStack() })() }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu")
+                    if (showHamburger) {
+                        IconButton(
+                            onClick = { nav.popBackStack() }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Menu,
+                                contentDescription = "Menu"
+                            )
                         }
                     }
                 }
             )
         }
-    ) { innerPadding ->
+
+    ) { padding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(padding)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             content()
         }
+
     }
 }
