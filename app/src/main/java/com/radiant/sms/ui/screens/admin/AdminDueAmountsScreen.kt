@@ -1,7 +1,6 @@
 package com.radiant.sms.ui.screens.admin
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,9 +12,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -49,7 +48,6 @@ import java.text.DecimalFormat
 import java.util.Locale
 
 private data class AdminDueRow(
-    val memberId: Long? = null,
     val memberName: String = "-",
     val memberCode: String = "",
     val shareCount: Int = 0,
@@ -57,123 +55,86 @@ private data class AdminDueRow(
     val totalDue: Double = 0.0
 )
 
-private fun Any?.asMap(): Map<String, Any?>? {
-    return when (this) {
+private fun Any?.asMap(): Map<String, Any?>? =
+    when (this) {
         is Map<*, *> -> this.entries.associate { (k, v) -> k.toString() to v }
         else -> null
     }
-}
 
-private fun Any?.asString(): String? = when (this) {
-    null -> null
-    is String -> this
-    else -> this.toString()
-}
+private fun Any?.asString(): String? =
+    when (this) {
+        null -> null
+        is String -> this
+        else -> this.toString()
+    }
 
-private fun Any?.asLong(): Long? = when (this) {
-    is Number -> this.toLong()
-    is String -> this.trim().toLongOrNull()
-    else -> null
-}
-
-private fun Any?.asInt(): Int? = when (this) {
-    is Number -> this.toInt()
-    is String -> this.trim().toIntOrNull()
-    else -> null
-}
-
-private fun Any?.asDouble(): Double? = when (this) {
-    is Number -> this.toDouble()
-    is String -> this.trim().replace(",", "").toDoubleOrNull()
-    else -> null
-}
-
-/** ✅ NEW: If backend sends array/list of months, use size as dueMonths */
-private fun Any?.asListSizeInt(): Int? {
-    return when (this) {
-        is List<*> -> this.size
-        is Array<*> -> this.size
-        // Sometimes backend may send "1,2,3" string
-        is String -> {
-            val s = this.trim()
-            if (s.contains(",")) s.split(",").map { it.trim() }.filter { it.isNotEmpty() }.size else null
-        }
+private fun Any?.asInt(): Int? =
+    when (this) {
+        is Number -> this.toInt()
+        is String -> this.trim().toIntOrNull()
         else -> null
     }
-}
 
+private fun Any?.asDouble(): Double? =
+    when (this) {
+        is Number -> this.toDouble()
+        is String -> this.trim().replace(",", "").toDoubleOrNull()
+        else -> null
+    }
+
+private fun formatMoney(amount: Double): String = DecimalFormat("#,##0.00").format(amount)
+
+/**
+ * ✅ Matches Laravel: /api/admin/due-summary
+ * Each item:
+ *  - member (MemberResource: full_name, nid, share, etc.)
+ *  - due_total
+ *  - due_months_count
+ */
 private fun parseAdminDueSummary(json: AnyJson): Pair<List<AdminDueRow>, Double?> {
-    val dataAny = json["data"]
-    val list = (dataAny as? List<*>)?.filterNotNull()?.mapNotNull { it as? Map<*, *> }
-        ?: (json["members"] as? List<*>)?.filterNotNull()?.mapNotNull { it as? Map<*, *> }
-        ?: emptyList()
+    val list = (json["data"] as? List<*>)?.mapNotNull { it as? Map<*, *> } ?: emptyList()
 
     val rows = list.map { raw ->
         val m = raw.entries.associate { (k, v) -> k.toString() to v }
         val memberMap = m["member"].asMap()
 
-        val memberId =
-            (m["member_id"].asLong()
-                ?: memberMap?.get("id").asLong()
-                ?: m["id"].asLong())
-
         val name = listOf(
-            m["full_name"].asString(),
-            m["member_full_name"].asString(),
-            m["member_name"].asString(),
-            m["name"].asString(),
             memberMap?.get("full_name").asString(),
-            memberMap?.get("name").asString()
+            memberMap?.get("name").asString(),
+            m["full_name"].asString(),
+            m["name"].asString()
         ).firstOrNull { !it.isNullOrBlank() }?.trim().orEmpty().ifBlank { "Member" }
 
         val code = listOf(
+            memberMap?.get("nid").asString(),
             m["nid"].asString(),
-            m["member_code"].asString(),
-            m["member_no"].asString(),
-            m["code"].asString(),
-            m["account_no"].asString(),
-            memberMap?.get("nid").asString()
+            memberMap?.get("member_code").asString()
         ).firstOrNull { !it.isNullOrBlank() }?.trim().orEmpty()
 
         val shareCount = listOf(
-            m["share"].asInt(),
-            m["shares"].asInt(),
-            m["share_count"].asInt(),
+            memberMap?.get("share_count").asInt(),
             memberMap?.get("share").asInt(),
             memberMap?.get("shares").asInt(),
-            memberMap?.get("share_count").asInt()
+            m["share_count"].asInt(),
+            m["share"].asInt(),
+            m["shares"].asInt()
         ).firstOrNull { it != null } ?: 0
 
-        // ✅ FIX: handle due months as Int OR list size
+        // ✅ THIS is the key returned by Laravel controller
         val dueMonths = listOf(
-            // integer keys
-            m["due_months"].asInt(),
-            m["due_month"].asInt(),
-            m["due_count"].asInt(),
-            m["months"].asInt(),
-            m["due"].asInt(),
-
-            // list/array keys (use size)
-            m["due_months"].asListSizeInt(),
-            m["due_month_list"].asListSizeInt(),
-            m["due_month_list_local"].asListSizeInt(),
-            m["months"].asListSizeInt(),
-            m["due"].asListSizeInt(),
-
-            // sometimes nested month list
-            m["due_summary"].asMap()?.get("months").asListSizeInt(),
-            m["due_summary"].asMap()?.get("due_months").asListSizeInt()
+            m["due_months_count"].asInt(),
+            m["due_month_count"].asInt(),
+            m["due_count"].asInt()
         ).firstOrNull { it != null } ?: 0
 
+        // ✅ THIS is the key returned by Laravel controller
         val totalDue = listOf(
-            m["total_due"].asDouble(),
             m["due_total"].asDouble(),
-            m["amount"].asDouble(),
+            m["total_due"].asDouble(),
             m["total"].asDouble()
         ).firstOrNull { it != null } ?: 0.0
 
         AdminDueRow(
-            memberId = memberId,
             memberName = name,
             memberCode = code,
             shareCount = shareCount,
@@ -182,18 +143,10 @@ private fun parseAdminDueSummary(json: AnyJson): Pair<List<AdminDueRow>, Double?
         )
     }
 
-    val summary = json["summary"].asMap()
-    val summaryTotal = listOf(
-        summary?.get("total_due").asDouble(),
-        summary?.get("total").asDouble(),
-        json["total_due"].asDouble(),
-        json["total"].asDouble()
-    ).firstOrNull { it != null }
-
-    return rows to summaryTotal
+    // Controller doesn't return a global total_due; compute locally
+    val computedTotal = rows.sumOf { it.totalDue }
+    return rows to computedTotal
 }
-
-private fun formatMoney(amount: Double): String = DecimalFormat("#,##0.00").format(amount)
 
 @Composable
 private fun NumberBadge(
@@ -234,7 +187,7 @@ fun AdminDueAmountsScreen(nav: NavController) {
 
     var search by remember { mutableStateOf("") }
     var all by remember { mutableStateOf<List<AdminDueRow>>(emptyList()) }
-    var serverTotalDue by remember { mutableStateOf<Double?>(null) }
+    var totalDue by remember { mutableStateOf(0.0) }
 
     val filtered = remember(search, all) {
         val q = search.trim().lowercase(Locale.getDefault())
@@ -244,21 +197,21 @@ fun AdminDueAmountsScreen(nav: NavController) {
                 .any { it.lowercase(Locale.getDefault()).contains(q) }
         }
     }
-    val filteredTotal = remember(filtered) { filtered.sumOf { it.totalDue } }
 
     fun load() {
         scope.launch {
             loading = true
             error = null
             try {
-                val json = repo.adminDueSummary(search = null, perPage = null)
-                val (rows, total) = parseAdminDueSummary(json)
+                // Laravel validates per_page max 100
+                val json = repo.adminDueSummary(search = null, perPage = 100)
+                val (rows, computedTotal) = parseAdminDueSummary(json)
                 all = rows
-                serverTotalDue = total
+                totalDue = computedTotal
             } catch (e: Exception) {
                 error = when (e) {
                     is HttpException -> "HTTP ${e.code()}"
-                    else -> (e.message ?: "Failed to load due amounts")
+                    else -> (e.message ?: "Failed to load due summary")
                 }
             } finally {
                 loading = false
@@ -275,11 +228,13 @@ fun AdminDueAmountsScreen(nav: NavController) {
                 .background(screenBg)
                 .padding(16.dp)
         ) {
+            // ✅ Rename page
             Text(
-                text = "Due Amounts",
+                text = "Due Summary",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold
             )
+
             Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
@@ -315,7 +270,7 @@ fun AdminDueAmountsScreen(nav: NavController) {
                         Column(horizontalAlignment = Alignment.End) {
                             Text("Total Due", style = MaterialTheme.typography.labelMedium, color = subtleText)
                             Text(
-                                formatMoney(serverTotalDue ?: filteredTotal),
+                                formatMoney(totalDue),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -354,7 +309,6 @@ fun AdminDueAmountsScreen(nav: NavController) {
                 colors = CardDefaults.cardColors(containerColor = cardBg)
             ) {
                 Column {
-                    // header (more spacing + centered columns)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -404,10 +358,7 @@ fun AdminDueAmountsScreen(nav: NavController) {
                             items(filtered) { row ->
                                 DueRowItem(
                                     row = row,
-                                    subtleText = subtleText,
-                                    onClick = {
-                                        row.memberId?.let { nav.navigate("admin_member_details/$it") }
-                                    }
+                                    subtleText = subtleText
                                 )
                                 Divider()
                             }
@@ -423,13 +374,12 @@ fun AdminDueAmountsScreen(nav: NavController) {
 @Composable
 private fun DueRowItem(
     row: AdminDueRow,
-    subtleText: Color,
-    onClick: () -> Unit
+    subtleText: Color
 ) {
+    // ✅ Not clickable — prevents opening edit/update screens
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = row.memberId != null) { onClick() }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -452,7 +402,6 @@ private fun DueRowItem(
             }
         }
 
-        // ✅ badge style + spacing
         Box(modifier = Modifier.weight(0.85f), contentAlignment = Alignment.Center) {
             NumberBadge(value = row.shareCount.toString())
         }
