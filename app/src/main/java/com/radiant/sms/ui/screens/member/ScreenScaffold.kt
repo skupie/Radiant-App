@@ -1,62 +1,53 @@
-package com.radiant.sms.ui.screens.member
+package com.radiant.sms.ui.screens.admin
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Assignment
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.TokenStore
+import com.radiant.sms.ui.Routes
 import kotlinx.coroutines.launch
-
-/**
- * Local routes so this file doesn't fail if Routes.kt is missing constants.
- */
-private object Rts {
-    const val LOGIN = "login"
-    const val MEMBER_LEDGER = "member_ledger"
-    const val MEMBER_DUE_SUMMARY = "member_due_summary"
-    const val MEMBER_SHARE_DETAILS = "member_share_details"
-    const val MEMBER_PROFILE = "member_profile"
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ScreenScaffold(
+fun AdminScaffold(
     nav: NavController,
     title: String = "",
     hideTitle: Boolean = true,
     showHamburger: Boolean = true,
     content: @Composable () -> Unit
 ) {
+
     val context = LocalContext.current
     val tokenStore = remember { TokenStore(context) }
 
@@ -65,9 +56,8 @@ fun ScreenScaffold(
 
     fun logout() {
         tokenStore.clear()
-        nav.navigate(Rts.LOGIN) {
+        nav.navigate(Routes.LOGIN) {
             popUpTo(0) { inclusive = true }
-            launchSingleTop = true
         }
     }
 
@@ -82,53 +72,41 @@ fun ScreenScaffold(
         drawerState = drawerState,
         gesturesEnabled = showHamburger,
         drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier.width(280.dp)
-            ) {
-                Spacer(modifier = Modifier.height(12.dp))
+            ModalDrawerSheet(modifier = Modifier.width(280.dp)) {
 
                 NavigationDrawerItem(
-                    label = { Text("Ledger") },
+                    label = { Text("Dashboard") },
                     selected = false,
-                    icon = { Icon(Icons.Filled.List, contentDescription = null) },
-                    onClick = {
-                        closeDrawerThen {
-                            nav.navigate(Rts.MEMBER_LEDGER) { launchSingleTop = true }
-                        }
-                    }
+                    icon = { Icon(Icons.Filled.Dashboard, null) },
+                    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_DASHBOARD) } }
+                )
+
+                NavigationDrawerItem(
+                    label = { Text("Deposits") },
+                    selected = false,
+                    icon = { Icon(Icons.Filled.AttachMoney, null) },
+                    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_DEPOSITS) } }
                 )
 
                 NavigationDrawerItem(
                     label = { Text("Due Summary") },
                     selected = false,
-                    icon = { Icon(Icons.Filled.Assignment, contentDescription = null) },
-                    onClick = {
-                        closeDrawerThen {
-                            nav.navigate(Rts.MEMBER_DUE_SUMMARY) { launchSingleTop = true }
-                        }
-                    }
-                )
-
-                NavigationDrawerItem(
-                    label = { Text("Share Details") },
-                    selected = false,
-                    icon = { Icon(Icons.Filled.Info, contentDescription = null) },
-                    onClick = {
-                        closeDrawerThen {
-                            nav.navigate(Rts.MEMBER_SHARE_DETAILS) { launchSingleTop = true }
-                        }
-                    }
+                    icon = { Icon(Icons.Filled.Warning, null) },
+                    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_DUE_AMOUNTS) } }
                 )
 
                 NavigationDrawerItem(
                     label = { Text("Profile") },
                     selected = false,
-                    icon = { Icon(Icons.Filled.Person, contentDescription = null) },
-                    onClick = {
-                        closeDrawerThen {
-                            nav.navigate(Rts.MEMBER_PROFILE) { launchSingleTop = true }
-                        }
-                    }
+                    icon = { Icon(Icons.Filled.Person, null) },
+                    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_PROFILE) } }
+                )
+
+                NavigationDrawerItem(
+                    label = { Text("Admin Panel") },
+                    selected = false,
+                    icon = { Icon(Icons.Filled.AdminPanelSettings, null) },
+                    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_PANEL) } }
                 )
 
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
@@ -136,41 +114,51 @@ fun ScreenScaffold(
                 NavigationDrawerItem(
                     label = { Text("Logout") },
                     selected = false,
-                    icon = { Icon(Icons.Filled.Logout, contentDescription = null) },
-                    onClick = {
-                        scope.launch {
-                            drawerState.close()
-                            logout()
-                        }
-                    }
+                    icon = { Icon(Icons.Filled.Logout, null) },
+                    onClick = { logout() }
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
             }
         }
     ) {
         Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            // ✅ This avoids weird extra top space (TopAppBar already handles system insets)
+            contentWindowInsets = TopAppBarDefaults.windowInsets,
+
             topBar = {
-                TopAppBar(
-                    windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { if (!hideTitle) Text(title) },
-                    navigationIcon = {
-                        if (showHamburger) {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                Column {
+                    TopAppBar(
+                        windowInsets = TopAppBarDefaults.windowInsets,
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        title = {
+                            if (!hideTitle && title.isNotBlank()) {
+                                Text(
+                                    text = title,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
+                            }
+                        },
+                        navigationIcon = {
+                            if (showHamburger) {
+                                IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                    Icon(Icons.Default.Menu, contentDescription = "Menu")
+                                }
                             }
                         }
-                    }
-                )
+                    )
+                    // ✅ subtle separator like modern apps
+                    Divider()
+                }
             }
-        ) {
+        ) { padding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp)
+                    .padding(padding)
+                    // ✅ consistent global page padding (clean + modern)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 content()
             }
