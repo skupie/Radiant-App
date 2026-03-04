@@ -1,10 +1,8 @@
 package com.radiant.sms.ui.screens.admin
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
@@ -25,7 +23,6 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -43,10 +40,10 @@ import kotlinx.coroutines.launch
 fun AdminScaffold(
     nav: NavController,
     title: String = "",
-    hideTitle: Boolean = true,
     showHamburger: Boolean = true,
     content: @Composable () -> Unit
 ) {
+
     val context = LocalContext.current
     val tokenStore = remember { TokenStore(context) }
 
@@ -57,7 +54,6 @@ fun AdminScaffold(
         tokenStore.clear()
         nav.navigate(Routes.LOGIN) {
             popUpTo(0) { inclusive = true }
-            launchSingleTop = true
         }
     }
 
@@ -70,7 +66,6 @@ fun AdminScaffold(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = showHamburger,
         drawerContent = {
             ModalDrawerSheet(modifier = Modifier.width(280.dp)) {
 
@@ -78,85 +73,95 @@ fun AdminScaffold(
                     label = { Text("Dashboard") },
                     selected = false,
                     icon = { Icon(Icons.Filled.Dashboard, null) },
-                    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_DASHBOARD) { launchSingleTop = true } } }
+                    onClick = {
+                        closeDrawerThen {
+                            nav.navigate(Routes.ADMIN_DASHBOARD)
+                        }
+                    }
                 )
 
                 NavigationDrawerItem(
                     label = { Text("Deposits") },
                     selected = false,
                     icon = { Icon(Icons.Filled.AttachMoney, null) },
-                    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_DEPOSITS) { launchSingleTop = true } } }
+                    onClick = {
+                        closeDrawerThen {
+                            nav.navigate(Routes.ADMIN_DEPOSITS)
+                        }
+                    }
                 )
 
-                // ✅ Drawer name updated
                 NavigationDrawerItem(
                     label = { Text("Due Summary") },
                     selected = false,
                     icon = { Icon(Icons.Filled.Warning, null) },
-                    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_DUE_AMOUNTS) { launchSingleTop = true } } }
+                    onClick = {
+                        closeDrawerThen {
+                            nav.navigate(Routes.ADMIN_DUE_AMOUNTS)
+                        }
+                    }
                 )
 
                 NavigationDrawerItem(
                     label = { Text("Profile") },
                     selected = false,
                     icon = { Icon(Icons.Filled.Person, null) },
-                    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_PROFILE) { launchSingleTop = true } } }
+                    onClick = {
+                        closeDrawerThen {
+                            nav.navigate(Routes.ADMIN_PROFILE)
+                        }
+                    }
                 )
 
                 NavigationDrawerItem(
                     label = { Text("Admin Panel") },
                     selected = false,
                     icon = { Icon(Icons.Filled.AdminPanelSettings, null) },
-                    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_PANEL) { launchSingleTop = true } } }
+                    onClick = {
+                        closeDrawerThen {
+                            nav.navigate(Routes.ADMIN_PANEL)
+                        }
+                    }
                 )
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                Divider()
 
                 NavigationDrawerItem(
                     label = { Text("Logout") },
                     selected = false,
                     icon = { Icon(Icons.Filled.Logout, null) },
-                    onClick = {
-                        scope.launch {
-                            drawerState.close()
-                            logout()
-                        }
-                    }
+                    onClick = { logout() }
                 )
             }
         }
     ) {
+
         Scaffold(
-            modifier = Modifier.fillMaxSize(),
-
-            // ✅ IMPORTANT: respect safe area (status/navigation bars) for ALL pages
-            contentWindowInsets = WindowInsets.safeDrawing,
-
             topBar = {
                 TopAppBar(
-                    // ✅ Top bar already handles status bar insets
-                    windowInsets = TopAppBarDefaults.windowInsets,
-                    title = { if (!hideTitle) Text(title) },
+                    title = { Text(title) },
                     navigationIcon = {
                         if (showHamburger) {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            IconButton(onClick = {
+                                scope.launch { drawerState.open() }
+                            }) {
                                 Icon(Icons.Default.Menu, contentDescription = "Menu")
                             }
                         }
                     }
                 )
             }
-        ) { innerPadding ->
+        ) { padding ->
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    // ✅ pushes content below TopAppBar + system insets
-                    .padding(innerPadding)
-                    // ✅ your consistent page padding like screenshot
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(padding)
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
                 content()
             }
+
         }
     }
 }
