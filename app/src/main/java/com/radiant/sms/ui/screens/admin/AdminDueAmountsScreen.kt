@@ -42,6 +42,7 @@ import com.radiant.sms.data.Repository
 import com.radiant.sms.network.AnyJson
 import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import java.text.DecimalFormat
 import java.util.Locale
 
@@ -178,7 +179,6 @@ fun AdminDueAmountsScreen(nav: NavController) {
     val scope = rememberCoroutineScope()
     val repo = remember { Repository(NetworkModule.api(context)) }
 
-    // financial-app feel
     val screenBg = Color(0xFFF6F7FB)
     val cardBg = Color.White
     val subtleText = Color(0xFF6B7280)
@@ -205,12 +205,17 @@ fun AdminDueAmountsScreen(nav: NavController) {
             loading = true
             error = null
             try {
-                val json = repo.adminDueSummary(search = null, perPage = 5000)
+                // ✅ FIX: do NOT send huge per_page (causes HTTP 422 on your backend)
+                val json = repo.adminDueSummary(search = null, perPage = null)
+
                 val (rows, total) = parseAdminDueSummary(json)
                 all = rows
                 serverTotalDue = total
             } catch (e: Exception) {
-                error = e.message ?: "Failed to load due amounts"
+                error = when (e) {
+                    is HttpException -> "HTTP ${e.code()}"
+                    else -> (e.message ?: "Failed to load due amounts")
+                }
             } finally {
                 loading = false
             }
@@ -290,7 +295,8 @@ fun AdminDueAmountsScreen(nav: NavController) {
                         Spacer(Modifier.height(10.dp))
                         Row(
                             Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = error ?: "",
@@ -312,7 +318,6 @@ fun AdminDueAmountsScreen(nav: NavController) {
                 colors = CardDefaults.cardColors(containerColor = cardBg)
             ) {
                 Column {
-                    // Header row (desktop-like)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
