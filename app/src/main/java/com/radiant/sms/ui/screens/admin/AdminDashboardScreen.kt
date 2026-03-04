@@ -6,16 +6,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
@@ -80,20 +80,18 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
         vm.loadMembers()
     }
 
-    // Keep scaffold behavior
-    AdminScaffold(nav = nav, hideTitle = true, showHamburger = true) {
+    // ✅ Title beside hamburger (TopAppBar)
+    AdminScaffold(
+        nav = nav,
+        title = "Dashboard",
+        hideTitle = false,
+        showHamburger = true
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(screenBg)
-                // ✅ IMPORTANT: remove statusBarsPadding() to avoid huge top gap
-                // and use a small top padding so card sits higher but never gets cropped
-                .padding(horizontal = 16.dp)
-                .padding(top = 8.dp)
         ) {
-            // ✅ tighter spacing so the top card is nearer to the top
-            Spacer(Modifier.height(6.dp))
-
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = cardShape,
@@ -101,16 +99,6 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Dashboard",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -210,10 +198,7 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                     ) {
                         Column(
                             Modifier
-                                .clickable {
-                                    // open edit directly
-                                    nav.navigate("admin_member_details/$memberId")
-                                }
+                                .clickable { nav.navigate("admin_member_details/$memberId") }
                                 .padding(16.dp)
                         ) {
                             Row(
