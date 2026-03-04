@@ -50,8 +50,6 @@ private data class AdminDueRow(
     val memberId: Long? = null,
     val memberName: String = "-",
     val memberCode: String = "",
-    val email: String = "",
-    val phone: String = "",
     val shareCount: Int = 0,
     val dueMonths: Int = 0,
     val totalDue: Double = 0.0
@@ -88,6 +86,12 @@ private fun Any?.asDouble(): Double? = when (this) {
     else -> null
 }
 
+/**
+ * Robust parser for /api/admin/due-summary
+ * Fixes:
+ * - member name uses full_name (or member.full_name)
+ * - share uses share (or member.share)
+ */
 private fun parseAdminDueSummary(json: AnyJson): Pair<List<AdminDueRow>, Double?> {
     val dataAny = json["data"]
     val list = (dataAny as? List<*>)?.filterNotNull()?.mapNotNull { it as? Map<*, *> }
@@ -99,47 +103,50 @@ private fun parseAdminDueSummary(json: AnyJson): Pair<List<AdminDueRow>, Double?
         val memberMap = m["member"].asMap()
 
         val memberId =
-            (m["member_id"].asLong() ?: memberMap?.get("id").asLong() ?: m["id"].asLong())
+            (m["member_id"].asLong()
+                ?: memberMap?.get("id").asLong()
+                ?: m["id"].asLong())
 
+        // ✅ FIX: include full_name keys
         val name = listOf(
-            m["member_name"].asString(),
+            m["full_name"].asString(),
             m["member_full_name"].asString(),
+            m["member_name"].asString(),
             m["name"].asString(),
+            memberMap?.get("full_name").asString(),
             memberMap?.get("name").asString()
         ).firstOrNull { !it.isNullOrBlank() }?.trim().orEmpty().ifBlank { "Member" }
 
+        // show nid/member_code under name if available
         val code = listOf(
+            m["nid"].asString(),
             m["member_code"].asString(),
             m["member_no"].asString(),
             m["code"].asString(),
-            m["account"].asString(),
             m["account_no"].asString(),
-            m["nid"].asString()
+            memberMap?.get("nid").asString()
         ).firstOrNull { !it.isNullOrBlank() }?.trim().orEmpty()
 
-        val email = listOf(m["email"].asString(), memberMap?.get("email").asString())
-            .firstOrNull { !it.isNullOrBlank() }?.trim().orEmpty()
-
-        val phone = listOf(
-            m["mobile"].asString(),
-            m["phone"].asString(),
-            memberMap?.get("mobile").asString(),
-            memberMap?.get("phone").asString()
-        ).firstOrNull { !it.isNullOrBlank() }?.trim().orEmpty()
-
+        // ✅ FIX: include share keys (share / member.share)
         val shareCount = listOf(
-            m["share_count"].asInt(),
+            m["share"].asInt(),
             m["shares"].asInt(),
-            memberMap?.get("share_count").asInt(),
-            memberMap?.get("shares").asInt()
+            m["share_count"].asInt(),
+            memberMap?.get("share").asInt(),
+            memberMap?.get("shares").asInt(),
+            memberMap?.get("share_count").asInt()
         ).firstOrNull { it != null } ?: 0
 
+        // due months keys
         val dueMonths = listOf(
             m["due_months"].asInt(),
+            m["due_month"].asInt(),
             m["months"].asInt(),
-            m["due_count"].asInt()
+            m["due_count"].asInt(),
+            m["due"].asInt()
         ).firstOrNull { it != null } ?: 0
 
+        // total due keys
         val totalDue = listOf(
             m["total_due"].asDouble(),
             m["due_total"].asDouble(),
@@ -151,8 +158,6 @@ private fun parseAdminDueSummary(json: AnyJson): Pair<List<AdminDueRow>, Double?
             memberId = memberId,
             memberName = name,
             memberCode = code,
-            email = email,
-            phone = phone,
             shareCount = shareCount,
             dueMonths = dueMonths,
             totalDue = totalDue
@@ -190,11 +195,12 @@ fun AdminDueAmountsScreen(nav: NavController) {
     var all by remember { mutableStateOf<List<AdminDueRow>>(emptyList()) }
     var serverTotalDue by remember { mutableStateOf<Double?>(null) }
 
+    // ✅ CONTACT COLUMN REMOVED, but search still supports name/code
     val filtered = remember(search, all) {
         val q = search.trim().lowercase(Locale.getDefault())
         if (q.isBlank()) all
         else all.filter { r ->
-            listOf(r.memberName, r.memberCode, r.email, r.phone)
+            listOf(r.memberName, r.memberCode)
                 .any { it.lowercase(Locale.getDefault()).contains(q) }
         }
     }
@@ -205,9 +211,8 @@ fun AdminDueAmountsScreen(nav: NavController) {
             loading = true
             error = null
             try {
-                // ✅ FIX: do NOT send huge per_page (causes HTTP 422 on your backend)
+                // keep perPage null (avoid 422)
                 val json = repo.adminDueSummary(search = null, perPage = null)
-
                 val (rows, total) = parseAdminDueSummary(json)
                 all = rows
                 serverTotalDue = total
@@ -318,6 +323,7 @@ fun AdminDueAmountsScreen(nav: NavController) {
                 colors = CardDefaults.cardColors(containerColor = cardBg)
             ) {
                 Column {
+                    // ✅ HEADER (CONTACT REMOVED)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -326,18 +332,12 @@ fun AdminDueAmountsScreen(nav: NavController) {
                     ) {
                         Text(
                             "MEMBER",
-                            modifier = Modifier.weight(1.35f),
+                            modifier = Modifier.weight(1.7f),
                             color = subtleText,
                             style = MaterialTheme.typography.labelMedium
                         )
                         Text(
-                            "CONTACT",
-                            modifier = Modifier.weight(1.55f),
-                            color = subtleText,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                        Text(
-                            "SHARES",
+                            "SHARE",
                             modifier = Modifier.weight(0.7f),
                             color = subtleText,
                             style = MaterialTheme.typography.labelMedium
@@ -372,7 +372,8 @@ fun AdminDueAmountsScreen(nav: NavController) {
                                     row = row,
                                     subtleText = subtleText,
                                     onClick = {
-                                        row.memberId?.let { nav.navigate("admin_member_detail/$it") }
+                                        // ✅ FIX: correct route name to prevent crash
+                                        row.memberId?.let { nav.navigate("admin_member_details/$it") }
                                     }
                                 )
                                 Divider()
@@ -399,7 +400,8 @@ private fun DueRowItem(
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1.35f)) {
+        // MEMBER (name + nid/code)
+        Column(modifier = Modifier.weight(1.7f)) {
             Text(
                 text = row.memberName,
                 style = MaterialTheme.typography.bodyMedium,
@@ -418,39 +420,28 @@ private fun DueRowItem(
             }
         }
 
-        Column(modifier = Modifier.weight(1.55f)) {
-            Text(
-                text = row.email.ifBlank { "—" },
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (row.phone.isNotBlank()) {
-                Text(
-                    text = row.phone,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = subtleText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-
+        // SHARE
         Text(
             row.shareCount.toString(),
             modifier = Modifier.weight(0.7f),
             style = MaterialTheme.typography.bodyMedium
         )
+
+        // DUE MONTHS
         Text(
             row.dueMonths.toString(),
             modifier = Modifier.weight(0.7f),
             style = MaterialTheme.typography.bodyMedium
         )
+
+        // TOTAL DUE
         Text(
             formatMoney(row.totalDue),
             modifier = Modifier.weight(0.9f),
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Spacer(Modifier.width(2.dp))
     }
