@@ -12,9 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -35,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -86,12 +88,20 @@ private fun Any?.asDouble(): Double? = when (this) {
     else -> null
 }
 
-/**
- * Robust parser for /api/admin/due-summary
- * Fixes:
- * - member name uses full_name (or member.full_name)
- * - share uses share (or member.share)
- */
+/** ✅ NEW: If backend sends array/list of months, use size as dueMonths */
+private fun Any?.asListSizeInt(): Int? {
+    return when (this) {
+        is List<*> -> this.size
+        is Array<*> -> this.size
+        // Sometimes backend may send "1,2,3" string
+        is String -> {
+            val s = this.trim()
+            if (s.contains(",")) s.split(",").map { it.trim() }.filter { it.isNotEmpty() }.size else null
+        }
+        else -> null
+    }
+}
+
 private fun parseAdminDueSummary(json: AnyJson): Pair<List<AdminDueRow>, Double?> {
     val dataAny = json["data"]
     val list = (dataAny as? List<*>)?.filterNotNull()?.mapNotNull { it as? Map<*, *> }
@@ -107,7 +117,6 @@ private fun parseAdminDueSummary(json: AnyJson): Pair<List<AdminDueRow>, Double?
                 ?: memberMap?.get("id").asLong()
                 ?: m["id"].asLong())
 
-        // ✅ FIX: include full_name keys
         val name = listOf(
             m["full_name"].asString(),
             m["member_full_name"].asString(),
@@ -117,7 +126,6 @@ private fun parseAdminDueSummary(json: AnyJson): Pair<List<AdminDueRow>, Double?
             memberMap?.get("name").asString()
         ).firstOrNull { !it.isNullOrBlank() }?.trim().orEmpty().ifBlank { "Member" }
 
-        // show nid/member_code under name if available
         val code = listOf(
             m["nid"].asString(),
             m["member_code"].asString(),
@@ -127,7 +135,6 @@ private fun parseAdminDueSummary(json: AnyJson): Pair<List<AdminDueRow>, Double?
             memberMap?.get("nid").asString()
         ).firstOrNull { !it.isNullOrBlank() }?.trim().orEmpty()
 
-        // ✅ FIX: include share keys (share / member.share)
         val shareCount = listOf(
             m["share"].asInt(),
             m["shares"].asInt(),
@@ -137,16 +144,27 @@ private fun parseAdminDueSummary(json: AnyJson): Pair<List<AdminDueRow>, Double?
             memberMap?.get("share_count").asInt()
         ).firstOrNull { it != null } ?: 0
 
-        // due months keys
+        // ✅ FIX: handle due months as Int OR list size
         val dueMonths = listOf(
+            // integer keys
             m["due_months"].asInt(),
             m["due_month"].asInt(),
-            m["months"].asInt(),
             m["due_count"].asInt(),
-            m["due"].asInt()
+            m["months"].asInt(),
+            m["due"].asInt(),
+
+            // list/array keys (use size)
+            m["due_months"].asListSizeInt(),
+            m["due_month_list"].asListSizeInt(),
+            m["due_month_list_local"].asListSizeInt(),
+            m["months"].asListSizeInt(),
+            m["due"].asListSizeInt(),
+
+            // sometimes nested month list
+            m["due_summary"].asMap()?.get("months").asListSizeInt(),
+            m["due_summary"].asMap()?.get("due_months").asListSizeInt()
         ).firstOrNull { it != null } ?: 0
 
-        // total due keys
         val totalDue = listOf(
             m["total_due"].asDouble(),
             m["due_total"].asDouble(),
@@ -177,6 +195,29 @@ private fun parseAdminDueSummary(json: AnyJson): Pair<List<AdminDueRow>, Double?
 
 private fun formatMoney(amount: Double): String = DecimalFormat("#,##0.00").format(amount)
 
+@Composable
+private fun NumberBadge(
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .wrapContentWidth(Alignment.CenterHorizontally)
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(999.dp)
+            )
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDueAmountsScreen(nav: NavController) {
@@ -195,7 +236,6 @@ fun AdminDueAmountsScreen(nav: NavController) {
     var all by remember { mutableStateOf<List<AdminDueRow>>(emptyList()) }
     var serverTotalDue by remember { mutableStateOf<Double?>(null) }
 
-    // ✅ CONTACT COLUMN REMOVED, but search still supports name/code
     val filtered = remember(search, all) {
         val q = search.trim().lowercase(Locale.getDefault())
         if (q.isBlank()) all
@@ -211,7 +251,6 @@ fun AdminDueAmountsScreen(nav: NavController) {
             loading = true
             error = null
             try {
-                // keep perPage null (avoid 422)
                 val json = repo.adminDueSummary(search = null, perPage = null)
                 val (rows, total) = parseAdminDueSummary(json)
                 all = rows
@@ -266,11 +305,7 @@ fun AdminDueAmountsScreen(nav: NavController) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text(
-                                "Members",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = subtleText
-                            )
+                            Text("Members", style = MaterialTheme.typography.labelMedium, color = subtleText)
                             Text(
                                 filtered.size.toString(),
                                 style = MaterialTheme.typography.titleMedium,
@@ -278,11 +313,7 @@ fun AdminDueAmountsScreen(nav: NavController) {
                             )
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                "Total Due",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = subtleText
-                            )
+                            Text("Total Due", style = MaterialTheme.typography.labelMedium, color = subtleText)
                             Text(
                                 formatMoney(serverTotalDue ?: filteredTotal),
                                 style = MaterialTheme.typography.titleMedium,
@@ -323,7 +354,7 @@ fun AdminDueAmountsScreen(nav: NavController) {
                 colors = CardDefaults.cardColors(containerColor = cardBg)
             ) {
                 Column {
-                    // ✅ HEADER (CONTACT REMOVED)
+                    // header (more spacing + centered columns)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -332,27 +363,30 @@ fun AdminDueAmountsScreen(nav: NavController) {
                     ) {
                         Text(
                             "MEMBER",
-                            modifier = Modifier.weight(1.7f),
+                            modifier = Modifier.weight(2.2f),
                             color = subtleText,
                             style = MaterialTheme.typography.labelMedium
                         )
                         Text(
                             "SHARE",
-                            modifier = Modifier.weight(0.7f),
+                            modifier = Modifier.weight(0.85f),
                             color = subtleText,
-                            style = MaterialTheme.typography.labelMedium
+                            style = MaterialTheme.typography.labelMedium,
+                            textAlign = TextAlign.Center
                         )
                         Text(
                             "DUE",
-                            modifier = Modifier.weight(0.7f),
+                            modifier = Modifier.weight(0.85f),
                             color = subtleText,
-                            style = MaterialTheme.typography.labelMedium
+                            style = MaterialTheme.typography.labelMedium,
+                            textAlign = TextAlign.Center
                         )
                         Text(
                             "TOTAL",
-                            modifier = Modifier.weight(0.9f),
+                            modifier = Modifier.weight(1.1f),
                             color = subtleText,
-                            style = MaterialTheme.typography.labelMedium
+                            style = MaterialTheme.typography.labelMedium,
+                            textAlign = TextAlign.End
                         )
                     }
                     Divider()
@@ -372,7 +406,6 @@ fun AdminDueAmountsScreen(nav: NavController) {
                                     row = row,
                                     subtleText = subtleText,
                                     onClick = {
-                                        // ✅ FIX: correct route name to prevent crash
                                         row.memberId?.let { nav.navigate("admin_member_details/$it") }
                                     }
                                 )
@@ -400,8 +433,7 @@ private fun DueRowItem(
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // MEMBER (name + nid/code)
-        Column(modifier = Modifier.weight(1.7f)) {
+        Column(modifier = Modifier.weight(2.2f)) {
             Text(
                 text = row.memberName,
                 style = MaterialTheme.typography.bodyMedium,
@@ -420,29 +452,27 @@ private fun DueRowItem(
             }
         }
 
-        // SHARE
-        Text(
-            row.shareCount.toString(),
-            modifier = Modifier.weight(0.7f),
-            style = MaterialTheme.typography.bodyMedium
-        )
+        // ✅ badge style + spacing
+        Box(modifier = Modifier.weight(0.85f), contentAlignment = Alignment.Center) {
+            NumberBadge(value = row.shareCount.toString())
+        }
 
-        // DUE MONTHS
-        Text(
-            row.dueMonths.toString(),
-            modifier = Modifier.weight(0.7f),
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Box(modifier = Modifier.weight(0.85f), contentAlignment = Alignment.Center) {
+            NumberBadge(value = row.dueMonths.toString())
+        }
 
-        // TOTAL DUE
         Text(
             formatMoney(row.totalDue),
-            modifier = Modifier.weight(0.9f),
+            modifier = Modifier
+                .weight(1.1f)
+                .padding(start = 6.dp),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.End,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+
         Spacer(Modifier.width(2.dp))
     }
 }
