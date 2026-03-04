@@ -1,23 +1,24 @@
 package com.radiant.sms.ui.screens.member
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
 import com.radiant.sms.data.Repository
 import com.radiant.sms.network.NetworkModule
 import androidx.compose.ui.platform.LocalContext
@@ -36,8 +37,6 @@ fun MemberShareDetailsScreen(
 
     var memberName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
-    var nid by remember { mutableStateOf("") }
-    var imageUrl by remember { mutableStateOf("") }
 
     var shareCount by remember { mutableStateOf(0) }
     var totalDeposit by remember { mutableStateOf(0.0) }
@@ -46,17 +45,14 @@ fun MemberShareDetailsScreen(
 
         try {
 
-            val profile = repo.me()
+            val me = repo.me()
 
-            memberName = profile.user.name ?: ""
-            email = profile.user.email ?: ""
-            nid = profile.user.nid ?: ""
-            imageUrl = profile.user.image ?: ""
+            memberName = me.user.name ?: ""
+            email = me.user.email ?: ""
 
-            val share = repo.memberShares()
-
-            shareCount = share.totalShares
-            totalDeposit = share.totalDeposits
+            // share info comes from same response in your API
+            shareCount = me.user.share_count ?: 0
+            totalDeposit = me.user.total_deposit ?: 0.0
 
         } catch (e: Exception) {
             error = e.message
@@ -68,44 +64,57 @@ fun MemberShareDetailsScreen(
 
     ScreenScaffold(
         nav = nav,
-        title = "Member Details",
+        title = "Share Information",
         hideTitle = false
     ) {
 
+        if (loading) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator()
+            }
+            return@ScreenScaffold
+        }
+
+        if (error != null) {
+            Text(
+                text = error ?: "",
+                color = MaterialTheme.colorScheme.error
+            )
+            return@ScreenScaffold
+        }
+
         Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.fillMaxSize()
         ) {
 
-            Spacer(Modifier.height(10.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
 
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
 
-            Spacer(Modifier.height(10.dp))
+                    Text(
+                        memberName,
+                        style = MaterialTheme.typography.titleLarge
+                    )
 
-            Text(
-                text = memberName,
-                style = MaterialTheme.typography.titleLarge
-            )
+                    Text(
+                        email,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
 
-            Text(
-                text = email,
-                style = MaterialTheme.typography.bodyMedium
-            )
+                }
 
-            Text(
-                text = "NID: $nid",
-                style = MaterialTheme.typography.bodySmall
-            )
+            }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -115,28 +124,22 @@ fun MemberShareDetailsScreen(
                 Card(
                     modifier = Modifier.weight(1f),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFEEF4FF)
-                    ),
-                    shape = RoundedCornerShape(14.dp)
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
                 ) {
 
                     Column(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
+                        modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
 
-                        Text(
-                            "Total Shares",
-                            style = MaterialTheme.typography.labelMedium
-                        )
+                        Text("Total Shares")
 
                         Spacer(Modifier.height(6.dp))
 
                         Text(
                             shareCount.toString(),
-                            style = MaterialTheme.typography.headlineSmall
+                            style = MaterialTheme.typography.headlineMedium
                         )
 
                     }
@@ -146,28 +149,22 @@ fun MemberShareDetailsScreen(
                 Card(
                     modifier = Modifier.weight(1f),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFE9F8EF)
-                    ),
-                    shape = RoundedCornerShape(14.dp)
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
                 ) {
 
                     Column(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
+                        modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
 
-                        Text(
-                            "Total Deposit",
-                            style = MaterialTheme.typography.labelMedium
-                        )
+                        Text("Total Deposit")
 
                         Spacer(Modifier.height(6.dp))
 
                         Text(
                             "৳ $totalDeposit",
-                            style = MaterialTheme.typography.headlineSmall
+                            style = MaterialTheme.typography.headlineMedium
                         )
 
                     }
