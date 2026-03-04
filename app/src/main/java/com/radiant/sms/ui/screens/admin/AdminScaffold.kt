@@ -17,18 +17,21 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.TokenStore
@@ -40,6 +43,7 @@ import kotlinx.coroutines.launch
 fun AdminScaffold(
     nav: NavController,
     title: String = "",
+    hideTitle: Boolean = true,
     showHamburger: Boolean = true,
     content: @Composable () -> Unit
 ) {
@@ -66,6 +70,7 @@ fun AdminScaffold(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = showHamburger,
         drawerContent = {
             ModalDrawerSheet(modifier = Modifier.width(280.dp)) {
 
@@ -73,58 +78,38 @@ fun AdminScaffold(
                     label = { Text("Dashboard") },
                     selected = false,
                     icon = { Icon(Icons.Filled.Dashboard, null) },
-                    onClick = {
-                        closeDrawerThen {
-                            nav.navigate(Routes.ADMIN_DASHBOARD)
-                        }
-                    }
+                    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_DASHBOARD) } }
                 )
 
                 NavigationDrawerItem(
                     label = { Text("Deposits") },
                     selected = false,
                     icon = { Icon(Icons.Filled.AttachMoney, null) },
-                    onClick = {
-                        closeDrawerThen {
-                            nav.navigate(Routes.ADMIN_DEPOSITS)
-                        }
-                    }
+                    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_DEPOSITS) } }
                 )
 
                 NavigationDrawerItem(
                     label = { Text("Due Summary") },
                     selected = false,
                     icon = { Icon(Icons.Filled.Warning, null) },
-                    onClick = {
-                        closeDrawerThen {
-                            nav.navigate(Routes.ADMIN_DUE_AMOUNTS)
-                        }
-                    }
+                    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_DUE_AMOUNTS) } }
                 )
 
                 NavigationDrawerItem(
                     label = { Text("Profile") },
                     selected = false,
                     icon = { Icon(Icons.Filled.Person, null) },
-                    onClick = {
-                        closeDrawerThen {
-                            nav.navigate(Routes.ADMIN_PROFILE)
-                        }
-                    }
+                    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_PROFILE) } }
                 )
 
                 NavigationDrawerItem(
                     label = { Text("Admin Panel") },
                     selected = false,
                     icon = { Icon(Icons.Filled.AdminPanelSettings, null) },
-                    onClick = {
-                        closeDrawerThen {
-                            nav.navigate(Routes.ADMIN_PANEL)
-                        }
-                    }
+                    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_PANEL) } }
                 )
 
-                Divider()
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
 
                 NavigationDrawerItem(
                     label = { Text("Logout") },
@@ -135,33 +120,43 @@ fun AdminScaffold(
             }
         }
     ) {
-
         Scaffold(
+            contentWindowInsets = TopAppBarDefaults.windowInsets,
             topBar = {
-                TopAppBar(
-                    title = { Text(title) },
-                    navigationIcon = {
-                        if (showHamburger) {
-                            IconButton(onClick = {
-                                scope.launch { drawerState.open() }
-                            }) {
-                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                Column {
+                    TopAppBar(
+                        windowInsets = TopAppBarDefaults.windowInsets,
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        title = {
+                            if (!hideTitle && title.isNotBlank()) {
+                                Text(
+                                    text = title,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        },
+                        navigationIcon = {
+                            if (showHamburger) {
+                                IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                    Icon(Icons.Default.Menu, contentDescription = "Menu")
+                                }
                             }
                         }
-                    }
-                )
+                    )
+                    Divider()
+                }
             }
         ) { padding ->
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 content()
             }
-
         }
     }
 }
