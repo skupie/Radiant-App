@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +57,7 @@ import com.radiant.sms.network.AdminActivityDto
 import com.radiant.sms.network.AdminTeamMemberDto
 import com.radiant.sms.network.AdminTeamMemberUpsertRequest
 import com.radiant.sms.network.NetworkModule
+import kotlinx.coroutines.launch
 
 /**
  * Admin Panel:
@@ -146,6 +148,8 @@ private fun AdminActivityTab(
     subtleText: Color,
     cardShape: RoundedCornerShape
 ) {
+    val scope = rememberCoroutineScope()
+
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var items by remember { mutableStateOf<List<AdminActivityDto>>(emptyList()) }
@@ -181,15 +185,13 @@ private fun AdminActivityTab(
                     Spacer(Modifier.height(6.dp))
                     Text(error ?: "", color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(12.dp))
-                    OutlinedButton(onClick = { loading = true }) {
+                    OutlinedButton(
+                        onClick = { scope.launch { load() } }
+                    ) {
                         Icon(Icons.Filled.Refresh, contentDescription = null)
                         Text("Retry", modifier = Modifier.padding(start = 8.dp))
                     }
                 }
-            }
-
-            LaunchedEffect(loading) {
-                if (loading) load()
             }
         }
 
@@ -259,6 +261,8 @@ private fun AdminTeamMembersTab(
     subtleText: Color,
     cardShape: RoundedCornerShape
 ) {
+    val scope = rememberCoroutineScope()
+
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var items by remember { mutableStateOf<List<AdminTeamMemberDto>>(emptyList()) }
@@ -267,8 +271,6 @@ private fun AdminTeamMembersTab(
     var editing by remember { mutableStateOf<AdminTeamMemberDto?>(null) }
 
     var confirmDeleteId by remember { mutableStateOf<Long?>(null) }
-    var pendingDeleteId by remember { mutableStateOf<Long?>(null) }
-    var pendingUpsert by remember { mutableStateOf<Pair<Long?, AdminTeamMemberUpsertRequest>?>(null) }
 
     suspend fun load() {
         loading = true
@@ -331,7 +333,7 @@ private fun AdminTeamMembersTab(
                 Spacer(Modifier.height(6.dp))
                 Text(error ?: "", color = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(12.dp))
-                OutlinedButton(onClick = { loading = true }) {
+                OutlinedButton(onClick = { scope.launch { load() } }) {
                     Icon(Icons.Filled.Refresh, contentDescription = null)
                     Text("Retry", modifier = Modifier.padding(start = 8.dp))
                 }
@@ -407,10 +409,7 @@ private fun AdminTeamMembersTab(
         }
     }
 
-    LaunchedEffect(loading) {
-        if (loading) load()
-    }
-
+    // Delete confirm dialog
     if (confirmDeleteId != null) {
         AlertDialog(
             onDismissRequest = { confirmDeleteId = null },
@@ -422,7 +421,18 @@ private fun AdminTeamMembersTab(
                         val id = confirmDeleteId
                         confirmDeleteId = null
                         if (id == null) return@TextButton
-                        pendingDeleteId = id
+
+                        scope.launch {
+                            loading = true
+                            error = null
+                            try {
+                                repo.adminDeleteTeamMember(id)
+                                load()
+                            } catch (e: Exception) {
+                                error = e.message ?: "Delete failed"
+                                loading = false
+                            }
+                        }
                     }
                 ) { Text("Delete") }
             },
@@ -430,50 +440,28 @@ private fun AdminTeamMembersTab(
         )
     }
 
-    LaunchedEffect(pendingDeleteId) {
-        val id = pendingDeleteId ?: return@LaunchedEffect
-        pendingDeleteId = null
-        loading = true
-        error = null
-        try {
-            repo.adminDeleteTeamMember(id)
-            load()
-        } catch (e: Exception) {
-            error = e.message ?: "Delete failed"
-        } finally {
-            loading = false
-        }
-    }
-
+    // Create / Edit dialog
     if (showDialog) {
         TeamMemberUpsertDialog(
             initial = editing,
             onDismiss = { showDialog = false },
             onSave = { req ->
+                val id = editing?.id
                 showDialog = false
-                loading = true
-                error = null
-                pendingUpsert = Pair(editing?.id, req)
+
+                scope.launch {
+                    loading = true
+                    error = null
+                    try {
+                        if (id == null) repo.adminCreateTeamMember(req) else repo.adminUpdateTeamMember(id, req)
+                        load()
+                    } catch (e: Exception) {
+                        error = e.message ?: "Save failed"
+                        loading = false
+                    }
+                }
             }
         )
-    }
-
-    LaunchedEffect(pendingUpsert) {
-        val payload = pendingUpsert ?: return@LaunchedEffect
-        pendingUpsert = null
-
-        val id = payload.first
-        val req = payload.second
-        loading = true
-        error = null
-        try {
-            if (id == null) repo.adminCreateTeamMember(req) else repo.adminUpdateTeamMember(id, req)
-            load()
-        } catch (e: Exception) {
-            error = e.message ?: "Save failed"
-        } finally {
-            loading = false
-        }
     }
 }
 
@@ -488,12 +476,9 @@ private fun TeamMemberUpsertDialog(
     var email by remember { mutableStateOf(initial?.email ?: "") }
     var password by remember { mutableStateOf("") }
 
-    // ✅ FIX: Jetstream roles (NO viewer)
+    // ✅ Jetstream roles (NO viewer)
     val roles = listOf("admin", "editor")
-
-    // ✅ Default to editor for new users
     var role by remember { mutableStateOf(initial?.role ?: "editor") }
-
     var roleMenu by remember { mutableStateOf(false) }
 
     AlertDialog(
