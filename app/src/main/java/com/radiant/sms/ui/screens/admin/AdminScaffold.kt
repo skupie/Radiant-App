@@ -92,8 +92,9 @@ fun AdminScaffold(
                     onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_DEPOSITS) { launchSingleTop = true } } }
                 )
 
+                // ✅ Rename in drawer
                 NavigationDrawerItem(
-                    label = { Text("Due Amounts") },
+                    label = { Text("Due Summary") },
                     selected = false,
                     icon = { Icon(Icons.Filled.Warning, null) },
                     onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_DUE_AMOUNTS) { launchSingleTop = true } } }
@@ -158,7 +159,6 @@ fun AdminScaffold(
                     .fillMaxSize()
                     .padding(innerPadding)
                     .padding(horizontal = 16.dp)
-                    // ✅ SMALL FIX: reduce top space globally
                     .padding(top = 4.dp)
             ) {
                 content()
