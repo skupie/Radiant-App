@@ -1,5 +1,6 @@
 package com.radiant.sms.ui.screens.admin
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,28 +49,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.radiant.sms.data.Repository
 import com.radiant.sms.network.AdminActivityDto
+import com.radiant.sms.network.AdminCreateTeamMemberRequest
 import com.radiant.sms.network.AdminTeamMemberDto
-import com.radiant.sms.network.AdminTeamMemberUpsertRequest
+import com.radiant.sms.network.AdminUpdateTeamMemberRequest
 import com.radiant.sms.network.NetworkModule
 import kotlinx.coroutines.launch
 
-/**
- * Admin Panel:
- *  - Admin Activity feed
- *  - Team Members management (create / edit / delete + role)
- */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminPanelScreen(
     nav: NavController,
     modifier: Modifier = Modifier
 ) {
-    val api = remember { NetworkModule.api(nav.context) }
+    val context = LocalContext.current
+    val api = remember { NetworkModule.api(context) }
     val repo = remember { Repository(api) }
 
     val screenBg = Color(0xFFF6F7FB)
@@ -78,13 +79,14 @@ fun AdminPanelScreen(
 
     var tabIndex by remember { mutableIntStateOf(0) }
 
-    // ✅ Wrap in AdminScaffold so drawer/hamburger appears
-    AdminScaffold(nav = nav, showHamburger = true) {
-
+    // ✅ drawer added (UI layout inside remains same)
+    AdminScaffold(nav = nav) {
         Column(
             modifier = modifier
                 .fillMaxSize()
                 .background(screenBg)
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp)
         ) {
             Spacer(Modifier.height(12.dp))
 
@@ -96,7 +98,7 @@ fun AdminPanelScreen(
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Text(
-                        text = "Admin",
+                        text = "Admin Panel",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -122,19 +124,8 @@ fun AdminPanelScreen(
             Spacer(Modifier.height(14.dp))
 
             when (tabIndex) {
-                0 -> AdminActivityTab(
-                    repo = repo,
-                    cardBg = cardBg,
-                    subtleText = subtleText,
-                    cardShape = cardShape
-                )
-
-                else -> AdminTeamMembersTab(
-                    repo = repo,
-                    cardBg = cardBg,
-                    subtleText = subtleText,
-                    cardShape = cardShape
-                )
+                0 -> AdminActivityTab(repo = repo, cardBg = cardBg, subtleText = subtleText, cardShape = cardShape)
+                1 -> AdminTeamMembersTab(repo = repo, cardBg = cardBg, subtleText = subtleText, cardShape = cardShape)
             }
         }
     }
@@ -203,7 +194,7 @@ private fun AdminActivityTab(
                     Text("No admin activity yet", fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "When admins create/update/delete team members or perform actions, they will appear here.",
+                        "When admins perform actions, they will appear here.",
                         color = subtleText
                     )
                 }
@@ -234,13 +225,9 @@ private fun AdminActivityTab(
                                     if (isNotEmpty()) append("  •  ")
                                     append(a.createdAt)
                                 }
-                            }.ifBlank { "" },
+                            },
                             color = subtleText
                         )
-                        if (!a.details.isNullOrBlank()) {
-                            Spacer(Modifier.height(8.dp))
-                            Text(a.details ?: "", color = subtleText)
-                        }
                     }
                 }
             }
@@ -255,6 +242,7 @@ private fun AdminTeamMembersTab(
     subtleText: Color,
     cardShape: RoundedCornerShape
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var loading by remember { mutableStateOf(true) }
@@ -292,10 +280,7 @@ private fun AdminTeamMembersTab(
     Spacer(Modifier.height(10.dp))
 
     when {
-        loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-
+        loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         error != null -> {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -315,7 +300,6 @@ private fun AdminTeamMembersTab(
                 }
             }
         }
-
         members.isEmpty() -> {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -330,7 +314,6 @@ private fun AdminTeamMembersTab(
                 }
             }
         }
-
         else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(members) { m ->
                 Card(
@@ -360,7 +343,6 @@ private fun AdminTeamMembersTab(
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
-
                             Row {
                                 IconButton(onClick = { showEdit = m }) {
                                     Icon(Icons.Filled.Edit, contentDescription = "Edit")
@@ -370,36 +352,12 @@ private fun AdminTeamMembersTab(
                                 }
                             }
                         }
-
-                        Divider(modifier = Modifier.padding(top = 12.dp))
-
-                        Spacer(Modifier.height(10.dp))
-
-                        RoleSelector(
-                            currentRole = m.role ?: "staff",
-                            onRoleSelected = { role ->
-                                scope.launch {
-                                    try {
-                                        repo.adminTeamMemberUpsert(
-                                            AdminTeamMemberUpsertRequest(
-                                                id = m.id,
-                                                name = m.name ?: "",
-                                                email = m.email ?: "",
-                                                role = role
-                                            )
-                                        )
-                                        load()
-                                    } catch (_: Exception) { }
-                                }
-                            }
-                        )
                     }
                 }
             }
         }
     }
 
-    // dialogs kept as-is
     if (showCreate) {
         TeamMemberDialog(
             title = "Create Team Member",
@@ -410,17 +368,14 @@ private fun AdminTeamMembersTab(
             onSave = { name, email, role ->
                 scope.launch {
                     try {
-                        repo.adminTeamMemberUpsert(
-                            AdminTeamMemberUpsertRequest(
-                                id = null,
-                                name = name,
-                                email = email,
-                                role = role
-                            )
+                        repo.adminCreateTeamMember(
+                            AdminCreateTeamMemberRequest(name = name, email = email, role = role)
                         )
                         showCreate = false
                         load()
-                    } catch (_: Exception) { }
+                    } catch (e: Exception) {
+                        Toast.makeText(context, e.message ?: "Failed", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         )
@@ -436,9 +391,9 @@ private fun AdminTeamMembersTab(
             onSave = { name, email, role ->
                 scope.launch {
                     try {
-                        repo.adminTeamMemberUpsert(
-                            AdminTeamMemberUpsertRequest(
-                                id = member.id,
+                        repo.adminUpdateTeamMember(
+                            AdminUpdateTeamMemberRequest(
+                                id = member.id ?: return@launch,
                                 name = name,
                                 email = email,
                                 role = role
@@ -446,7 +401,9 @@ private fun AdminTeamMembersTab(
                         )
                         showEdit = null
                         load()
-                    } catch (_: Exception) { }
+                    } catch (e: Exception) {
+                        Toast.makeText(context, e.message ?: "Failed", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         )
@@ -461,10 +418,12 @@ private fun AdminTeamMembersTab(
                 TextButton(onClick = {
                     scope.launch {
                         try {
-                            repo.adminTeamMemberDelete(member.id ?: return@launch)
+                            repo.adminDeleteTeamMember(member.id ?: return@launch)
                             showDelete = null
                             load()
-                        } catch (_: Exception) { }
+                        } catch (e: Exception) {
+                            Toast.makeText(context, e.message ?: "Failed", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }) { Text("Delete") }
             },
@@ -472,32 +431,6 @@ private fun AdminTeamMembersTab(
                 TextButton(onClick = { showDelete = null }) { Text("Cancel") }
             }
         )
-    }
-}
-
-@Composable
-private fun RoleSelector(
-    currentRole: String,
-    onRoleSelected: (String) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val roles = listOf("admin", "staff")
-
-    Box {
-        OutlinedButton(onClick = { expanded = true }) {
-            Text("Role: ${currentRole.uppercase()}")
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            roles.forEach { role ->
-                DropdownMenuItem(
-                    text = { Text(role.uppercase()) },
-                    onClick = {
-                        expanded = false
-                        onRoleSelected(role)
-                    }
-                )
-            }
-        }
     }
 }
 
@@ -513,6 +446,9 @@ private fun TeamMemberDialog(
     var name by remember { mutableStateOf(initialName) }
     var email by remember { mutableStateOf(initialEmail) }
     var role by remember { mutableStateOf(initialRole) }
+    var expanded by remember { mutableStateOf(false) }
+
+    val roles = listOf("admin", "staff")
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -535,7 +471,23 @@ private fun TeamMemberDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(10.dp))
-                RoleSelector(currentRole = role, onRoleSelected = { role = it })
+
+                Box {
+                    OutlinedButton(onClick = { expanded = true }) {
+                        Text("Role: ${role.uppercase()}")
+                    }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        roles.forEach { r ->
+                            DropdownMenuItem(
+                                text = { Text(r.uppercase()) },
+                                onClick = {
+                                    role = r
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
