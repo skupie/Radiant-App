@@ -114,6 +114,33 @@ fun ScreenScaffold(
                     icon = { Icon(Icons.Filled.Logout, null) },
                     onClick = { logout() }
                 )
+
+                
+
+                NavigationDrawerItem(
+    label = { Text("Financial Overview") },
+    selected = false,
+    icon = { Icon(Icons.Filled.AttachMoney, null) },
+    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_FINANCIAL_OVERVIEW) } }
+)
+
+NavigationDrawerItem(
+    label = { Text("Reports") },
+    selected = false,
+    icon = { Icon(Icons.Filled.Dashboard, null) },
+    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_REPORTS) } }
+)
+
+NavigationDrawerItem(
+    label = { Text("Notices") },
+    selected = false,
+    icon = { Icon(Icons.Filled.Warning, null) },
+    onClick = { closeDrawerThen { nav.navigate(Routes.ADMIN_NOTICES) } }
+)
+            
+
+
+                
             }
         }
     ) {
