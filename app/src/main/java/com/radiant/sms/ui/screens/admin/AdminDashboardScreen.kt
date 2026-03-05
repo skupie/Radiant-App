@@ -1,6 +1,7 @@
 package com.radiant.sms.ui.screens.admin
 
 import android.widget.Toast
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +41,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,6 +58,7 @@ import com.radiant.sms.util.DownloadHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
+import kotlin.math.max
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,7 +85,18 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
         vm.loadMembers()
     }
 
-    // ✅ Title beside hamburger (TopAppBar)
+    // ✅ Chart data: Top 6 members by total deposited
+    val chartData = remember(s.members) {
+        s.members
+            .map { m ->
+                val name = (m.fullName ?: "Member").trim().ifBlank { "Member" }
+                val total = m.totalDeposited ?: 0.0
+                name to total
+            }
+            .sortedByDescending { it.second }
+            .take(6)
+    }
+
     AdminScaffold(
         nav = nav,
         title = "Dashboard",
@@ -92,6 +108,8 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                 .fillMaxSize()
                 .background(screenBg)
         ) {
+
+            // Export + Create
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = cardShape,
@@ -147,6 +165,7 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
 
             Spacer(Modifier.height(12.dp))
 
+            // Search
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = cardShape,
@@ -168,6 +187,57 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
 
             Spacer(Modifier.height(12.dp))
 
+            // ✅ Chart Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = cardShape,
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(Modifier.padding(14.dp)) {
+                    Text(
+                        text = "Top Depositors",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Based on total deposited amount",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = subtleText
+                    )
+                    Spacer(Modifier.height(12.dp))
+
+                    if (chartData.isEmpty() || chartData.all { it.second <= 0.0 }) {
+                        Text("No deposit data yet.", color = subtleText)
+                    } else {
+                        DepositsBarChart(
+                            items = chartData,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(180.dp)
+                        )
+
+                        Spacer(Modifier.height(10.dp))
+
+                        // tiny legend (names)
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            chartData.forEachIndexed { idx, (name, value) ->
+                                Text(
+                                    text = "${idx + 1}. ${name.take(22)} — BDT ${formatMoney(value)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = subtleText,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
             if (s.isLoading) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
                 Spacer(Modifier.height(10.dp))
@@ -178,6 +248,7 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                 Spacer(Modifier.height(8.dp))
             }
 
+            // Members list
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -300,6 +371,51 @@ fun AdminDashboardScreen(nav: NavController, vm: AdminMembersViewModel = viewMod
                     }
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun DepositsBarChart(
+    items: List<Pair<String, Double>>,
+    modifier: Modifier = Modifier
+) {
+    val maxValue = remember(items) { max(1.0, items.maxOfOrNull { it.second } ?: 1.0) }
+    val barColor = MaterialTheme.colorScheme.primary
+    val gridColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+
+        // Grid lines (4)
+        val lines = 4
+        for (i in 0..lines) {
+            val y = h * (i / lines.toFloat())
+            drawLine(
+                color = gridColor,
+                start = Offset(0f, y),
+                end = Offset(w, y),
+                strokeWidth = 2f
+            )
+        }
+
+        val count = items.size.coerceAtLeast(1)
+        val gap = w * 0.03f
+        val barWidth = (w - gap * (count + 1)) / count
+
+        items.forEachIndexed { index, (_, value) ->
+            val left = gap + index * (barWidth + gap)
+            val barH = ((value / maxValue).toFloat() * (h * 0.85f)).coerceAtLeast(6f)
+            val top = h - barH
+            val rect = Rect(left, top, left + barWidth, h)
+
+            drawRoundRect(
+                color = barColor,
+                topLeft = Offset(rect.left, rect.top),
+                size = androidx.compose.ui.geometry.Size(rect.width, rect.height),
+                cornerRadius = CornerRadius(18f, 18f)
+            )
         }
     }
 }
