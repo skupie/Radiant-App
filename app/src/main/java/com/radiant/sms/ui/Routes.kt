@@ -20,4 +20,7 @@ object Routes {
     const val ADMIN_DUE_AMOUNTS = "admin_due_amounts"
     const val ADMIN_PROFILE = "admin_profile"
     const val ADMIN_PANEL = "admin_panel"
+    const val ADMIN_FINANCIAL_OVERVIEW = "admin_financial_overview"
+    const val ADMIN_REPORTS = "admin_reports"
+    const val ADMIN_NOTICES = "admin_notices"
 }
