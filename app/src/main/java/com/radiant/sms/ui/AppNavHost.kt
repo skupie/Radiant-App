@@ -93,5 +93,17 @@ fun AppNavHost() {
         composable(Rts.ADMIN_PANEL) {
             AdminPanelScreen(nav = navController)
         }
+        
+        composable(Routes.ADMIN_FINANCIAL_OVERVIEW) {
+            AdminFinancialOverviewScreen(navController)
+        }
+
+        composable(Routes.ADMIN_REPORTS) {
+            AdminReportsScreen(navController)
+        }
+
+        composable(Routes.ADMIN_NOTICES) {
+            AdminNoticeScreen(navController)
+        }
     }
 }
